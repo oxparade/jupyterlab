@@ -6,6 +6,10 @@ from typing import Any, Dict, Iterable, List, Mapping
 
 import numpy as np
 import pandas as pd
+from sklearn.base import clone
+from sklearn.dummy import DummyRegressor
+from sklearn.linear_model import LinearRegression, Ridge
+from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import TimeSeriesSplit
 
 try:
@@ -230,24 +234,173 @@ def materialize_split(split: Mapping[str, pd.DataFrame], output_dir: str | Path)
     return out_dir
 
 
+def regression_metrics(y_true: pd.Series | np.ndarray, y_pred: pd.Series | np.ndarray) -> Dict[str, float]:
+    y_true_arr = np.asarray(y_true)
+    y_pred_arr = np.asarray(y_pred)
+    return {
+        "rmse": float(np.sqrt(mean_squared_error(y_true_arr, y_pred_arr))),
+        "mae": float(mean_absolute_error(y_true_arr, y_pred_arr)),
+        "r2": float(r2_score(y_true_arr, y_pred_arr)),
+    }
+
+
+def build_candidate_models() -> Dict[str, Any]:
+    return {
+        "dummy_mean": DummyRegressor(strategy="mean"),
+        "linear_regression": LinearRegression(),
+        "ridge_1": Ridge(alpha=1.0),
+        "ridge_10": Ridge(alpha=10.0),
+    }
+
+
+def evaluate_model_on_cv(
+    train_frame: pd.DataFrame,
+    feature_names: Iterable[str],
+    estimator: Any,
+    n_splits: int = 3,
+    max_rows_per_fold: int | None = None,
+) -> Dict[str, Any]:
+    folds = build_time_series_cv(train_frame, n_splits=n_splits)
+    fold_metrics: List[Dict[str, float]] = []
+
+    for fold in folds:
+        train_df = fold["train"]
+        valid_df = fold["validation"]
+
+        if max_rows_per_fold is not None:
+            train_df = maybe_sample(train_df, max_rows=max_rows_per_fold)
+            valid_df = maybe_sample(valid_df, max_rows=max_rows_per_fold)
+
+        train_df = _prepare_model_data(train_df, feature_names)
+        valid_df = _prepare_model_data(valid_df, feature_names)
+
+        model = clone(estimator)
+        X_train = train_df[list(feature_names)]
+        y_train = train_df[TARGET_COLUMN]
+        X_valid = valid_df[list(feature_names)]
+        y_valid = valid_df[TARGET_COLUMN]
+
+        model.fit(X_train, y_train)
+        y_pred = model.predict(X_valid)
+        fold_metrics.append(regression_metrics(y_valid, y_pred))
+
+    score_names = ("rmse", "mae", "r2")
+    mean_scores = {
+        metric: float(np.mean([scores[metric] for scores in fold_metrics]))
+        for metric in score_names
+    }
+    return {
+        "folds": fold_metrics,
+        "mean": mean_scores,
+    }
+
+
+def select_best_model(
+    train_frame: pd.DataFrame,
+    feature_names: Iterable[str],
+    candidate_models: Mapping[str, Any] | None = None,
+    n_splits: int = 3,
+    max_rows_per_fold: int | None = None,
+) -> Dict[str, Any]:
+    if candidate_models is None:
+        candidate_models = build_candidate_models()
+
+    results: List[Dict[str, Any]] = []
+    for model_name, model in candidate_models.items():
+        cv_scores = evaluate_model_on_cv(
+            train_frame=train_frame,
+            feature_names=list(feature_names),
+            estimator=model,
+            n_splits=n_splits,
+            max_rows_per_fold=max_rows_per_fold,
+        )
+        results.append({
+            "name": model_name,
+            "model": model,
+            "cv_metrics": cv_scores,
+        })
+
+    best = min(results, key=lambda item: item["cv_metrics"]["mean"]["rmse"])
+    return {
+        "best_name": best["name"],
+        "best_model": best["model"],
+        "results": results,
+    }
+
+
+def fit_and_score_model(
+    train_frame: pd.DataFrame,
+    valid_frame: pd.DataFrame,
+    feature_names: Iterable[str],
+    estimator: Any,
+) -> Dict[str, Any]:
+    feature_list = list(feature_names)
+    X_train = train_frame[feature_list]
+    y_train = train_frame[TARGET_COLUMN]
+    X_valid = valid_frame[feature_list]
+    y_valid = valid_frame[TARGET_COLUMN]
+
+    model = clone(estimator)
+    model.fit(X_train, y_train)
+    y_pred = model.predict(X_valid)
+    metrics = regression_metrics(y_valid, y_pred)
+    return {
+        "model": model,
+        "metrics": metrics,
+    }
+
+
+def _prepare_model_data(frame: pd.DataFrame, feature_names: Iterable[str], target_column: str = TARGET_COLUMN) -> pd.DataFrame:
+    feature_list = list(feature_names)
+    if target_column not in frame.columns:
+        raise KeyError(f"Target column '{target_column}' not found in frame.")
+    return frame[feature_list + [target_column]].dropna().copy()
+
+
 def main() -> None:
     df = load_modeling_frame()
     split_v1 = build_temporal_split(df, split_name="v1")
     split_v2 = build_temporal_split(df, split_name="v2")
-    cv_folds = build_time_series_cv(df, n_splits=3)
+
+    feature_names = DEFAULT_FEATURES
+    train_df = _prepare_model_data(maybe_sample(split_v1["train"], max_rows=500_000, seed=42), feature_names)
+    valid_df = _prepare_model_data(maybe_sample(split_v1["validation"], max_rows=200_000, seed=42), feature_names)
+    test_df = _prepare_model_data(maybe_sample(split_v1["test"], max_rows=200_000, seed=42), feature_names)
+
+    selected = select_best_model(
+        train_frame=train_df,
+        feature_names=feature_names,
+        candidate_models=build_candidate_models(),
+        n_splits=3,
+        max_rows_per_fold=120_000,
+    )
+
+    best_name = selected["best_name"]
+    best_model = selected["best_model"]
+
+    validation_run = fit_and_score_model(train_df, valid_df, feature_names, best_model)
+    test_run = fit_and_score_model(train_df, test_df, feature_names, best_model)
 
     print("Joined frame shape:", df.shape)
     print("MultiIndex names:", df.index.names)
-
+    print("\nTemporal splits:")
     for split in (split_v1, split_v2):
-        print(f"\n{split['description']}")
+        print(f"  {split['description']}")
         for part in ("train", "validation", "test"):
-            print(f"  {part:10s}: {len(split[part]):,} rows")
+            print(f"    {part:10s}: {len(split[part]):,} rows")
 
-    print(f"\nTime-series CV folds: {len(cv_folds)}")
-    for fold in cv_folds:
-        print(f"  {fold['description']}")
-        print(f"    train rows={len(fold['train']):,} | validation rows={len(fold['validation']):,}")
+    print("\nCross-validation candidate models:")
+    for result in selected["results"]:
+        print(
+            f"  {result['name']:20s} "
+            f"RMSE={result['cv_metrics']['mean']['rmse']:.4f} | "
+            f"MAE={result['cv_metrics']['mean']['mae']:.4f} | "
+            f"R2={result['cv_metrics']['mean']['r2']:.4f}"
+        )
+
+    print(f"\nSelected model: {best_name}")
+    print("Validation metrics:", validation_run["metrics"])
+    print("Test metrics:", test_run["metrics"])
 
     Xy_v1 = make_X_y(split_v1)
     print("\nX_train shape:", Xy_v1["X_train"].shape)
