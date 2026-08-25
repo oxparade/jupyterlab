@@ -1,0 +1,20 @@
+# Environnements virtuels
+/venv/
+/env/
+.venv/
+
+# Fichiers de cache et IDE
+__pycache__/
+.ipynb_checkpoints/
+.DS_Store
+.vscode/
+
+# Données (si trop lourdes, utilisez DVC ou ignorez-les)
+data/LD2011_2014.txt
+data/raw/raw.txt
+data/processed/*.csv
+data/modelling/*.parquet
+
+# Résultats html/images des notebooks
+notebooks/*.html
+notebooks/*.png
