@@ -9,6 +9,7 @@ from typing import Any, Iterable
 import mlflow
 import numpy as np
 import pandas as pd
+from mlflow.exceptions import MlflowException
 from mlflow.entities import ViewType
 from mlflow.tracking import MlflowClient
 from sklearn.base import clone
@@ -143,7 +144,6 @@ def ensure_experiment_ready(experiment_name: str) -> None:
     for experiment in client.search_experiments(view_type=ViewType.ALL):
         if experiment.name == experiment_name and experiment.lifecycle_stage == "deleted":
             client.restore_experiment(experiment.experiment_id)
-            break
 
 
 def promote_latest_model_version(registered_model_name: str, alias: str) -> None:
@@ -165,7 +165,13 @@ def main() -> None:
     tracking_uri = os.getenv("MLFLOW_TRACKING_URI", DEFAULT_MLFLOW_TRACKING_URI)
     mlflow.set_tracking_uri(tracking_uri)
     ensure_experiment_ready(MLFLOW_EXPERIMENT)
-    mlflow.set_experiment(MLFLOW_EXPERIMENT)
+    try:
+        mlflow.set_experiment(MLFLOW_EXPERIMENT)
+    except MlflowException as exc:
+        if "deleted experiment" not in str(exc).lower():
+            raise
+        ensure_experiment_ready(MLFLOW_EXPERIMENT)
+        mlflow.set_experiment(MLFLOW_EXPERIMENT)
 
     frame = ml_pipeline.load_modeling_frame()
     required_columns = sorted({TARGET, *ml_pipeline.DEFAULT_FEATURES})
