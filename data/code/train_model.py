@@ -291,20 +291,23 @@ def log_run_report(
     metrics: dict[str, float],
     extra_params: dict[str, Any] | None = None,
 ) -> None:
-    rows: list[dict[str, Any]] = [
+    run_rows: list[dict[str, Any]] = [
         {"group": "run", "key": "title", "value": run_title},
         {"group": "run", "key": "split", "value": split_name},
         {"group": "run", "key": "strategy", "value": strategy_name},
         {"group": "run", "key": "model_type", "value": model_type},
     ]
+    metric_rows: list[dict[str, Any]] = []
     for key, value in metrics.items():
-        rows.append({"group": "metrics", "key": key, "value": value})
+        metric_rows.append({"group": "metrics", "key": key, "value": value})
+    param_rows: list[dict[str, Any]] = []
     if extra_params:
         for key, value in extra_params.items():
-            rows.append({"group": "params", "key": key, "value": value})
+            param_rows.append({"group": "params", "key": key, "value": value})
 
-    report_html = pd.DataFrame(rows).to_html(index=False, border=0)
-    log_html_artifact(report_html, f"{run_title}_summary.html")
+    log_html_artifact(pd.DataFrame(run_rows).to_html(index=False, border=0), f"{run_title}_run.html")
+    log_html_artifact(pd.DataFrame(metric_rows).to_html(index=False, border=0), f"{run_title}_metrics.html")
+    log_html_artifact(pd.DataFrame(param_rows).to_html(index=False, border=0), f"{run_title}_params.html")
 
 
 def build_metadata_record(
