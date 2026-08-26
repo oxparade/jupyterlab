@@ -1,0 +1,307 @@
+[
+  {
+    "run_id": "c05b97ffea1446a697901a3c0c09a1c4",
+    "run_name": "linear-regression",
+    "split_name": "split_v1_2011-2012_2013_2014",
+    "strategy_name": "short_term",
+    "model_type": "linear_regression",
+    "features": [
+      "lag_1d",
+      "lag_7d"
+    ],
+    "metrics": {
+      "rmse": 7.501341811468608,
+      "mae": 4.11353577733678,
+      "r2": 0.97125380912758
+    },
+    "extra_params": {
+      "hypothesis": "La consommation dépend surtout des jours et semaines immédiatement précédents."
+    },
+    "model_uri": "models:/m-4ab878584da34999ac2ab8f56f1c971b",
+    "split": "split_v1_2011-2012_2013_2014",
+    "strategy": "short_term",
+    "val_rmse": 7.501341811468608,
+    "val_mae": 4.11353577733678,
+    "val_r2": 0.97125380912758,
+    "hypothesis": "La consommation dépend surtout des jours et semaines immédiatement précédents."
+  },
+  {
+    "run_id": "3786bf3a846e47e7b41b3b9066997259",
+    "run_name": "linear-regression",
+    "split_name": "split_v1_2011-2012_2013_2014",
+    "strategy_name": "medium_term",
+    "model_type": "linear_regression",
+    "features": [
+      "lag_7d",
+      "lag_30d"
+    ],
+    "metrics": {
+      "rmse": 9.089395363912942,
+      "mae": 5.0308988046639875,
+      "r2": 0.9577941760289906
+    },
+    "extra_params": {
+      "hypothesis": "La mémoire hebdomadaire et mensuelle capture une partie importante de la dynamique."
+    },
+    "model_uri": "models:/m-af9e5a808c044fec98f31f7de2d62e00",
+    "split": "split_v1_2011-2012_2013_2014",
+    "strategy": "medium_term",
+    "val_rmse": 9.089395363912942,
+    "val_mae": 5.0308988046639875,
+    "val_r2": 0.9577941760289906,
+    "hypothesis": "La mémoire hebdomadaire et mensuelle capture une partie importante de la dynamique."
+  },
+  {
+    "run_id": "682b53d98fc243878aa481e3ab54829e",
+    "run_name": "linear-regression",
+    "split_name": "split_v1_2011-2012_2013_2014",
+    "strategy_name": "trend_and_seasonality",
+    "model_type": "linear_regression",
+    "features": [
+      "lag_1d",
+      "lag_7d",
+      "lag_30d",
+      "lag_365d",
+      "rolling_mean_7d",
+      "rolling_mean_30d"
+    ],
+    "metrics": {
+      "rmse": 7.349370370219538,
+      "mae": 4.059459323059012,
+      "r2": 0.9724067622711497
+    },
+    "extra_params": {
+      "hypothesis": "Combiner mémoire courte, tendance et lissage améliore la prédiction."
+    },
+    "model_uri": "models:/m-98c0b28a417d43fc8b7472635b827ded",
+    "split": "split_v1_2011-2012_2013_2014",
+    "strategy": "trend_and_seasonality",
+    "val_rmse": 7.349370370219538,
+    "val_mae": 4.059459323059012,
+    "val_r2": 0.9724067622711497,
+    "hypothesis": "Combiner mémoire courte, tendance et lissage améliore la prédiction."
+  },
+  {
+    "run_id": "67802c47cce24101bba43eeabd28ca32",
+    "run_name": "linear-regression",
+    "split_name": "split_v2_2013_2014H1_2014H2",
+    "strategy_name": "short_term",
+    "model_type": "linear_regression",
+    "features": [
+      "lag_1d",
+      "lag_7d"
+    ],
+    "metrics": {
+      "rmse": 6.8825058274305935,
+      "mae": 3.840023531311485,
+      "r2": 0.970976322374388
+    },
+    "extra_params": {
+      "hypothesis": "La consommation dépend surtout des jours et semaines immédiatement précédents."
+    },
+    "model_uri": "models:/m-6b12838f41994b52879f3ec501083ea7",
+    "split": "split_v2_2013_2014H1_2014H2",
+    "strategy": "short_term",
+    "val_rmse": 6.8825058274305935,
+    "val_mae": 3.840023531311485,
+    "val_r2": 0.970976322374388,
+    "hypothesis": "La consommation dépend surtout des jours et semaines immédiatement précédents."
+  },
+  {
+    "run_id": "c35114f234c640afa34032eda4da8abb",
+    "run_name": "linear-regression",
+    "split_name": "split_v2_2013_2014H1_2014H2",
+    "strategy_name": "medium_term",
+    "model_type": "linear_regression",
+    "features": [
+      "lag_7d",
+      "lag_30d"
+    ],
+    "metrics": {
+      "rmse": 8.103737590101309,
+      "mae": 4.521593200782843,
+      "r2": 0.9597625912237998
+    },
+    "extra_params": {
+      "hypothesis": "La mémoire hebdomadaire et mensuelle capture une partie importante de la dynamique."
+    },
+    "model_uri": "models:/m-5ebf1b7b65a4491c921674b943df69a1",
+    "split": "split_v2_2013_2014H1_2014H2",
+    "strategy": "medium_term",
+    "val_rmse": 8.103737590101309,
+    "val_mae": 4.521593200782843,
+    "val_r2": 0.9597625912237998,
+    "hypothesis": "La mémoire hebdomadaire et mensuelle capture une partie importante de la dynamique."
+  },
+  {
+    "run_id": "967f49d163f140ea968cafe9cf2553cc",
+    "run_name": "linear-regression",
+    "split_name": "split_v2_2013_2014H1_2014H2",
+    "strategy_name": "trend_and_seasonality",
+    "model_type": "linear_regression",
+    "features": [
+      "lag_1d",
+      "lag_7d",
+      "lag_30d",
+      "lag_365d",
+      "rolling_mean_7d",
+      "rolling_mean_30d"
+    ],
+    "metrics": {
+      "rmse": 6.7493744318515825,
+      "mae": 3.791199723651532,
+      "r2": 0.9720882986288714
+    },
+    "extra_params": {
+      "hypothesis": "Combiner mémoire courte, tendance et lissage améliore la prédiction."
+    },
+    "model_uri": "models:/m-8f88610f3ff84aa4ae9636d921d46060",
+    "split": "split_v2_2013_2014H1_2014H2",
+    "strategy": "trend_and_seasonality",
+    "val_rmse": 6.7493744318515825,
+    "val_mae": 3.791199723651532,
+    "val_r2": 0.9720882986288714,
+    "hypothesis": "Combiner mémoire courte, tendance et lissage améliore la prédiction."
+  },
+  {
+    "run_id": "fcbbbe5b485f48c5b5a01e2f027fd0fd",
+    "run_name": "ridge",
+    "split_name": "split_v1_2011-2012_2013_2014",
+    "strategy_name": "trend_and_seasonality",
+    "model_type": "ridge",
+    "features": [
+      "lag_1d",
+      "lag_7d",
+      "lag_30d",
+      "lag_365d",
+      "rolling_mean_7d",
+      "rolling_mean_30d"
+    ],
+    "metrics": {
+      "rmse": 7.349370379491212,
+      "mae": 4.059459325047691,
+      "r2": 0.9724067622015287
+    },
+    "extra_params": {
+      "alpha": 1.0
+    },
+    "model_uri": "models:/m-673836f991394f95ac0009eec117e889",
+    "split": "split_v1_2011-2012_2013_2014",
+    "strategy": "trend_and_seasonality",
+    "val_rmse": 7.349370379491212,
+    "val_mae": 4.059459325047691,
+    "val_r2": 0.9724067622015287,
+    "alpha": 1.0
+  },
+  {
+    "run_id": "5a4d2a15bbff4fa2bcdbaeb25f051ce0",
+    "run_name": "ridge",
+    "split_name": "split_v1_2011-2012_2013_2014",
+    "strategy_name": "trend_and_seasonality",
+    "model_type": "ridge",
+    "features": [
+      "lag_1d",
+      "lag_7d",
+      "lag_30d",
+      "lag_365d",
+      "rolling_mean_7d",
+      "rolling_mean_30d"
+    ],
+    "metrics": {
+      "rmse": 7.349379644203458,
+      "mae": 4.059461316201934,
+      "r2": 0.9724066926326933
+    },
+    "extra_params": {
+      "alpha": 1000.0
+    },
+    "model_uri": "models:/m-aa3563ef0b2145ed923c05237efdef7f",
+    "split": "split_v1_2011-2012_2013_2014",
+    "strategy": "trend_and_seasonality",
+    "val_rmse": 7.349379644203458,
+    "val_mae": 4.059461316201934,
+    "val_r2": 0.9724066926326933,
+    "alpha": 1000.0
+  },
+  {
+    "run_id": "6fe2761eaf264528921425f63e301df2",
+    "run_name": "ridge",
+    "split_name": "split_v1_2011-2012_2013_2014",
+    "strategy_name": "trend_and_seasonality",
+    "model_type": "ridge",
+    "features": [
+      "lag_1d",
+      "lag_7d",
+      "lag_30d",
+      "lag_365d",
+      "rolling_mean_7d",
+      "rolling_mean_30d"
+    ],
+    "metrics": {
+      "rmse": 11.015460982570142,
+      "mae": 7.162344507561931,
+      "r2": 0.9380119824383638
+    },
+    "extra_params": {
+      "alpha": 1000000000.0
+    },
+    "model_uri": "models:/m-0f9570685b164855b5c53385507875c8",
+    "split": "split_v1_2011-2012_2013_2014",
+    "strategy": "trend_and_seasonality",
+    "val_rmse": 11.015460982570142,
+    "val_mae": 7.162344507561931,
+    "val_r2": 0.9380119824383638,
+    "alpha": 1000000000.0
+  },
+  {
+    "run_id": "e025d024c3744c858a1031d3810f0b67",
+    "run_name": "ridge-final",
+    "split_name": "split_v1_2011-2012_2013_2014",
+    "strategy_name": "trend_and_seasonality",
+    "model_type": "ridge_final",
+    "features": [
+      "lag_1d",
+      "lag_7d",
+      "lag_30d",
+      "lag_365d",
+      "rolling_mean_7d",
+      "rolling_mean_30d"
+    ],
+    "metrics": {
+      "test_rmse": 6.988524907705751,
+      "test_mae": 3.886068529412768,
+      "test_r2": 0.9729926553165451
+    },
+    "extra_params": {
+      "best_alpha": 1.0,
+      "best_features": "lag_1d,lag_7d,lag_30d,lag_365d,rolling_mean_7d,rolling_mean_30d"
+    },
+    "model_uri": "models:/m-124a96137b0143d491bd962c66bce266"
+  },
+  {
+    "run_id": "2703bf7f35154d84b0768fd3359151e7",
+    "run_name": "hist-gradient-boosting",
+    "split_name": "split_v1_2011-2012_2013_2014",
+    "strategy_name": "trend_and_seasonality",
+    "model_type": "hist_gradient_boosting",
+    "features": [
+      "lag_1d",
+      "lag_7d",
+      "lag_30d",
+      "lag_365d",
+      "rolling_mean_7d",
+      "rolling_mean_30d"
+    ],
+    "metrics": {
+      "val_val_rmse": 7.132127430659422,
+      "val_val_mae": 3.947712683879165,
+      "val_val_r2": 0.9740139312741276
+    },
+    "extra_params": {
+      "learning_rate": 0.08,
+      "max_iter": 150,
+      "max_leaf_nodes": 31
+    },
+    "model_uri": "models:/m-c4335809fbf24a23b1d41c633bdf88b4"
+  }
+]

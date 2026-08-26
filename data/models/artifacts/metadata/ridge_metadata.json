@@ -1,0 +1,24 @@
+{
+  "run_id": "6fe2761eaf264528921425f63e301df2",
+  "run_name": "ridge",
+  "split_name": "split_v1_2011-2012_2013_2014",
+  "strategy_name": "trend_and_seasonality",
+  "model_type": "ridge",
+  "features": [
+    "lag_1d",
+    "lag_7d",
+    "lag_30d",
+    "lag_365d",
+    "rolling_mean_7d",
+    "rolling_mean_30d"
+  ],
+  "metrics": {
+    "rmse": 11.015460982570142,
+    "mae": 7.162344507561931,
+    "r2": 0.9380119824383638
+  },
+  "extra_params": {
+    "alpha": 1000000000.0
+  },
+  "model_uri": "models:/m-0f9570685b164855b5c53385507875c8"
+}
