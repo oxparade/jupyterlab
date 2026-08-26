@@ -1,5 +1,5 @@
 {
-  "run_id": "466f9045bc3b4a04820498d7341afb26",
+  "run_id": "cfa01e99b50a47b2b3a13231781782de",
   "run_name": "linear-regression",
   "split_name": "split_v2_2013_2014H1_2014H2",
   "strategy_name": "trend_and_seasonality",
@@ -20,5 +20,5 @@
   "extra_params": {
     "hypothesis": "Combiner mémoire courte, tendance et lissage améliore la prédiction."
   },
-  "model_uri": "models:/m-f78370519dcb4502a388b830b187a508"
+  "model_uri": "models:/m-b00e2ab28c7d4fad983b20f85820fce9"
 }

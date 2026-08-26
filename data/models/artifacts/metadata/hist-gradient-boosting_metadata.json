@@ -1,5 +1,5 @@
 {
-  "run_id": "a5d3a2299a044b78922a02f0fca5e18c",
+  "run_id": "a64783a9bf024bd19d92d8e6b6f30416",
   "run_name": "hist-gradient-boosting",
   "split_name": "split_v1_2011-2012_2013_2014",
   "strategy_name": "trend_and_seasonality",
@@ -22,5 +22,5 @@
     "max_iter": 150,
     "max_leaf_nodes": 31
   },
-  "model_uri": "models:/m-3bbfc317b3cc45b099dbe277086e66ba"
+  "model_uri": "models:/m-a9d5ff61bdbc46d5bf03cbd8c0b7c230"
 }

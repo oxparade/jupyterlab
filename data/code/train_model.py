@@ -6,6 +6,7 @@ import json
 import os
 import sqlite3
 import sys
+import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Any, Iterable
@@ -37,9 +38,9 @@ except ImportError:  # pragma: no cover
 TARGET = ml_pipeline.TARGET_COLUMN
 DEFAULT_MLFLOW_TRACKING_URI = "https://mlflow.10-53-101-61.nip.io"
 MLFLOW_EXPERIMENT = "electricity-load-tp02"
-REGISTER_MODEL = os.getenv("MLFLOW_REGISTER_MODEL", "false").lower() in {"1", "true", "yes"}
+REGISTER_MODEL = os.getenv("MLFLOW_REGISTER_MODEL", "true").lower() in {"1", "true", "yes"}
 REGISTERED_MODEL_NAME = os.getenv("MLFLOW_REGISTERED_MODEL_NAME", "modelregistrytest")
-PROMOTE_CHAMPION = os.getenv("MLFLOW_PROMOTE_CHAMPION", "false").lower() in {"1", "true", "yes"}
+PROMOTE_CHAMPION = os.getenv("MLFLOW_PROMOTE_CHAMPION", "true").lower() in {"1", "true", "yes"}
 CHAMPION_ALIAS = os.getenv("MLFLOW_CHAMPION_ALIAS", "champion")
 WRITE_DVC_SPLITS = os.getenv("WRITE_DVC_SPLITS", "false").lower() in {"1", "true", "yes"}
 LOCAL_ARTIFACT_ROOT = Path("data/models/artifacts")
@@ -48,6 +49,7 @@ LOCAL_FIGURE_DIR = LOCAL_ARTIFACT_ROOT / "figures"
 LOCAL_REPORT_DIR = LOCAL_ARTIFACT_ROOT / "reports"
 LOCAL_METADATA_DIR = LOCAL_ARTIFACT_ROOT / "metadata"
 LOCAL_METADATA_DB = LOCAL_ARTIFACT_ROOT / "metadata_models.db"
+LOCAL_MLFLOW_DB = LOCAL_ARTIFACT_ROOT / "mlflow.db"
 LOCAL_CONDA_YAML = LOCAL_ARTIFACT_ROOT / "conda.yaml"
 FEATURE_STRATEGIES: dict[str, dict[str, list[str] | str]] = {
     "short_term": {
@@ -400,6 +402,9 @@ def run_one_experiment(
             input_example=X_valid.head(5),
             signature=signature,
         )
+        save_model_serializations(model, "model")
+        mlflow.log_artifact(str(LOCAL_MODEL_DIR / "model.joblib"), artifact_path="model")
+        mlflow.log_artifact(str(LOCAL_MODEL_DIR / "model.skops"), artifact_path="model")
         prediction_figure = build_prediction_figure(
             y_true=y_valid,
             y_pred=pred,
@@ -734,6 +739,7 @@ def main() -> None:
             joblib.dump(final_model, str(champion_path))
             save_model_serializations(final_model, champion_artifact_stem)
             mlflow.log_artifact(str(champion_path), artifact_path="champions")
+            mlflow.log_artifact(str(LOCAL_MODEL_DIR / f"{champion_artifact_stem}.skops"), artifact_path="champions")
             active_run = mlflow.active_run()
             assert active_run is not None
             champion_metadata = build_metadata_record(
@@ -847,6 +853,9 @@ def main() -> None:
 
         log_json_artifact(metadata_records, "metadata_models.json", artifact_dir="metadata")
         write_metadata_database(metadata_records)
+        shutil.copyfile(LOCAL_METADATA_DB, LOCAL_MLFLOW_DB)
+        mlflow.log_artifact(str(LOCAL_METADATA_DB), artifact_path="metadata")
+        mlflow.log_artifact(str(LOCAL_MLFLOW_DB), artifact_path="metadata")
         write_conda_environment_file()
 
     finally:
