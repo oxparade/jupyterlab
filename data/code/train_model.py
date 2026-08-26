@@ -52,15 +52,19 @@ LOCAL_METADATA_DB = LOCAL_ARTIFACT_ROOT / "metadata_models.db"
 LOCAL_MLFLOW_DB = LOCAL_ARTIFACT_ROOT / "mlflow.db"
 LOCAL_CONDA_YAML = LOCAL_ARTIFACT_ROOT / "conda.yaml"
 FEATURE_STRATEGIES: dict[str, dict[str, list[str] | str]] = {
-    "short_term": {
+    "minimal": {
+        "features": ["lag_1d"],
+        "hypothesis": "Une seule mémoire courte sert de baseline simple.",
+    },
+    "weekly": {
         "features": ["lag_1d", "lag_7d"],
-        "hypothesis": "La consommation dépend surtout des jours et semaines immédiatement précédents.",
+        "hypothesis": "La consommation dépend surtout des informations les plus récentes et du cycle hebdomadaire.",
     },
-    "medium_term": {
-        "features": ["lag_7d", "lag_30d"],
-        "hypothesis": "La mémoire hebdomadaire et mensuelle capture une partie importante de la dynamique.",
+    "rolling": {
+        "features": ["lag_1d", "lag_7d", "rolling_mean_7d", "rolling_mean_30d"],
+        "hypothesis": "Les moyennes glissantes apportent une vue lissée de la tendance récente.",
     },
-    "trend_and_seasonality": {
+    "full": {
         "features": ml_pipeline.DEFAULT_FEATURES,
         "hypothesis": "Combiner mémoire courte, tendance et lissage améliore la prédiction.",
     },

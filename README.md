@@ -106,6 +106,24 @@ Le notebook `model_training_tp02.ipynb` est aligné sur ces colonnes et ajuste s
 
 ## Split temporel
 
+Pour le labo, les commandes suivantes sont disponibles :
+
+```bash
+uv run python -m dataset_split.cli
+uv run python -m model_training.cli
+```
+
+Le module `dataset_split` génère un dossier `dataset/` avec :
+
+- `train.parquet`
+- `validation.parquet`
+- `test.parquet`
+- `train_head.csv`
+- `validation_head.csv`
+- `test_head.csv`
+
+Le fichier `dataset_split/constants.py` contient `RANDOM_SEED`, qui pilote les fichiers `*_head.csv` pour le test de reproductibilité du labo.
+
 ### Split v1
 
 | Dataset | Période |
@@ -143,15 +161,23 @@ lag_1d, lag_7d
 
 Hypothèse : la consommation dépend surtout des informations les plus récentes.
 
-### `medium_term`
+### `weekly`
 
 ```text
-lag_7d, lag_30d
+lag_1d, lag_7d
 ```
 
-Hypothèse : la mémoire hebdomadaire et mensuelle capte une partie importante de la dynamique.
+Hypothèse : la consommation dépend surtout des informations les plus récentes et du cycle hebdomadaire.
 
-### `trend_and_seasonality`
+### `rolling`
+
+```text
+lag_1d, lag_7d, rolling_mean_7d, rolling_mean_30d
+```
+
+Hypothèse : les moyennes glissantes apportent une vue lissée de la tendance récente.
+
+### `full`
 
 ```text
 lag_1d, lag_7d, lag_30d, lag_365d,

@@ -1,9 +1,34 @@
 [
   {
-    "run_id": "e4ddcc2fcd004e58a571a9e6f7c017b8",
+    "run_id": "92ac9184a0334f88ba8d0c9cfb2dfd69",
     "run_name": "linear-regression",
     "split_name": "split_v1_2011-2012_2013_2014",
-    "strategy_name": "short_term",
+    "strategy_name": "minimal",
+    "model_type": "linear_regression",
+    "features": [
+      "lag_1d"
+    ],
+    "metrics": {
+      "rmse": 8.742527507001716,
+      "mae": 4.57195430906659,
+      "r2": 0.9609540126529172
+    },
+    "extra_params": {
+      "hypothesis": "Une seule mémoire courte sert de baseline simple."
+    },
+    "model_uri": "models:/m-b68039a94fb643a2b3a0ba12c394c440",
+    "split": "split_v1_2011-2012_2013_2014",
+    "strategy": "minimal",
+    "val_rmse": 8.742527507001716,
+    "val_mae": 4.57195430906659,
+    "val_r2": 0.9609540126529172,
+    "hypothesis": "Une seule mémoire courte sert de baseline simple."
+  },
+  {
+    "run_id": "75ead72b68044b328ffe4e2fb15b9769",
+    "run_name": "linear-regression",
+    "split_name": "split_v1_2011-2012_2013_2014",
+    "strategy_name": "weekly",
     "model_type": "linear_regression",
     "features": [
       "lag_1d",
@@ -15,47 +40,49 @@
       "r2": 0.97125380912758
     },
     "extra_params": {
-      "hypothesis": "La consommation dépend surtout des jours et semaines immédiatement précédents."
+      "hypothesis": "La consommation dépend surtout des informations les plus récentes et du cycle hebdomadaire."
     },
-    "model_uri": "models:/m-b2135aad99c94b0fa74a935ed61690c9",
+    "model_uri": "models:/m-82847427faff4d34aedfa73617feb66f",
     "split": "split_v1_2011-2012_2013_2014",
-    "strategy": "short_term",
+    "strategy": "weekly",
     "val_rmse": 7.501341811468608,
     "val_mae": 4.11353577733678,
     "val_r2": 0.97125380912758,
-    "hypothesis": "La consommation dépend surtout des jours et semaines immédiatement précédents."
+    "hypothesis": "La consommation dépend surtout des informations les plus récentes et du cycle hebdomadaire."
   },
   {
-    "run_id": "d16f4273547e4db28423bfc67bc16eda",
+    "run_id": "12d03958b5d74465b3035579dfb132b9",
     "run_name": "linear-regression",
     "split_name": "split_v1_2011-2012_2013_2014",
-    "strategy_name": "medium_term",
+    "strategy_name": "rolling",
     "model_type": "linear_regression",
     "features": [
+      "lag_1d",
       "lag_7d",
-      "lag_30d"
+      "rolling_mean_7d",
+      "rolling_mean_30d"
     ],
     "metrics": {
-      "rmse": 9.089395363912942,
-      "mae": 5.0308988046639875,
-      "r2": 0.9577941760289906
+      "rmse": 7.466214376967277,
+      "mae": 4.10967201987402,
+      "r2": 0.971522405241033
     },
     "extra_params": {
-      "hypothesis": "La mémoire hebdomadaire et mensuelle capture une partie importante de la dynamique."
+      "hypothesis": "Les moyennes glissantes apportent une vue lissée de la tendance récente."
     },
-    "model_uri": "models:/m-4dbae613c2ee43ca8b4fced121277223",
+    "model_uri": "models:/m-2bee3c5a8ed74b6ca418851704b79d60",
     "split": "split_v1_2011-2012_2013_2014",
-    "strategy": "medium_term",
-    "val_rmse": 9.089395363912942,
-    "val_mae": 5.0308988046639875,
-    "val_r2": 0.9577941760289906,
-    "hypothesis": "La mémoire hebdomadaire et mensuelle capture une partie importante de la dynamique."
+    "strategy": "rolling",
+    "val_rmse": 7.466214376967277,
+    "val_mae": 4.10967201987402,
+    "val_r2": 0.971522405241033,
+    "hypothesis": "Les moyennes glissantes apportent une vue lissée de la tendance récente."
   },
   {
-    "run_id": "cdc0542235fa4f5791b785a8f7e0bd7d",
+    "run_id": "a73fc1bf2d9b425199052b3a180fe215",
     "run_name": "linear-regression",
     "split_name": "split_v1_2011-2012_2013_2014",
-    "strategy_name": "trend_and_seasonality",
+    "strategy_name": "full",
     "model_type": "linear_regression",
     "features": [
       "lag_1d",
@@ -73,19 +100,44 @@
     "extra_params": {
       "hypothesis": "Combiner mémoire courte, tendance et lissage améliore la prédiction."
     },
-    "model_uri": "models:/m-76bade32a0be41039dc341d21fb248fd",
+    "model_uri": "models:/m-59fed5013ad84d7e9f00e85a9292cadb",
     "split": "split_v1_2011-2012_2013_2014",
-    "strategy": "trend_and_seasonality",
+    "strategy": "full",
     "val_rmse": 7.349370370219538,
     "val_mae": 4.059459323059012,
     "val_r2": 0.9724067622711497,
     "hypothesis": "Combiner mémoire courte, tendance et lissage améliore la prédiction."
   },
   {
-    "run_id": "34801477d1f446c3830491ad77031665",
+    "run_id": "df8ac453c8904b66969a32ddf33486c1",
     "run_name": "linear-regression",
     "split_name": "split_v2_2013_2014H1_2014H2",
-    "strategy_name": "short_term",
+    "strategy_name": "minimal",
+    "model_type": "linear_regression",
+    "features": [
+      "lag_1d"
+    ],
+    "metrics": {
+      "rmse": 8.174373797096147,
+      "mae": 4.280962296860203,
+      "r2": 0.9590580755614843
+    },
+    "extra_params": {
+      "hypothesis": "Une seule mémoire courte sert de baseline simple."
+    },
+    "model_uri": "models:/m-ebf7f9f4dd8b4c73805f1340cea5f99c",
+    "split": "split_v2_2013_2014H1_2014H2",
+    "strategy": "minimal",
+    "val_rmse": 8.174373797096147,
+    "val_mae": 4.280962296860203,
+    "val_r2": 0.9590580755614843,
+    "hypothesis": "Une seule mémoire courte sert de baseline simple."
+  },
+  {
+    "run_id": "d668d94294844e92a8f421a3ccd6d669",
+    "run_name": "linear-regression",
+    "split_name": "split_v2_2013_2014H1_2014H2",
+    "strategy_name": "weekly",
     "model_type": "linear_regression",
     "features": [
       "lag_1d",
@@ -97,47 +149,49 @@
       "r2": 0.970976322374388
     },
     "extra_params": {
-      "hypothesis": "La consommation dépend surtout des jours et semaines immédiatement précédents."
+      "hypothesis": "La consommation dépend surtout des informations les plus récentes et du cycle hebdomadaire."
     },
-    "model_uri": "models:/m-c44cdfb8237e4018903b3af7d8b5cea1",
+    "model_uri": "models:/m-26bda41296ac42f3b4ac4df035dd7b4b",
     "split": "split_v2_2013_2014H1_2014H2",
-    "strategy": "short_term",
+    "strategy": "weekly",
     "val_rmse": 6.8825058274305935,
     "val_mae": 3.840023531311485,
     "val_r2": 0.970976322374388,
-    "hypothesis": "La consommation dépend surtout des jours et semaines immédiatement précédents."
+    "hypothesis": "La consommation dépend surtout des informations les plus récentes et du cycle hebdomadaire."
   },
   {
-    "run_id": "3adbc268de174f4f8b93d529d28851c7",
+    "run_id": "e62f98a1b2954827a0ca05d62836d336",
     "run_name": "linear-regression",
     "split_name": "split_v2_2013_2014H1_2014H2",
-    "strategy_name": "medium_term",
+    "strategy_name": "rolling",
     "model_type": "linear_regression",
     "features": [
+      "lag_1d",
       "lag_7d",
-      "lag_30d"
+      "rolling_mean_7d",
+      "rolling_mean_30d"
     ],
     "metrics": {
-      "rmse": 8.103737590101309,
-      "mae": 4.521593200782843,
-      "r2": 0.9597625912237998
+      "rmse": 6.860478711215955,
+      "mae": 3.8450769147829496,
+      "r2": 0.9711618027501415
     },
     "extra_params": {
-      "hypothesis": "La mémoire hebdomadaire et mensuelle capture une partie importante de la dynamique."
+      "hypothesis": "Les moyennes glissantes apportent une vue lissée de la tendance récente."
     },
-    "model_uri": "models:/m-d7aa1e361ae3490293c9e451751c7913",
+    "model_uri": "models:/m-46e930c057e04d4c9b80cccfa5262a8c",
     "split": "split_v2_2013_2014H1_2014H2",
-    "strategy": "medium_term",
-    "val_rmse": 8.103737590101309,
-    "val_mae": 4.521593200782843,
-    "val_r2": 0.9597625912237998,
-    "hypothesis": "La mémoire hebdomadaire et mensuelle capture une partie importante de la dynamique."
+    "strategy": "rolling",
+    "val_rmse": 6.860478711215955,
+    "val_mae": 3.8450769147829496,
+    "val_r2": 0.9711618027501415,
+    "hypothesis": "Les moyennes glissantes apportent une vue lissée de la tendance récente."
   },
   {
-    "run_id": "cfa01e99b50a47b2b3a13231781782de",
+    "run_id": "15b69b2b4f9d487394d026f2dabd06c4",
     "run_name": "linear-regression",
     "split_name": "split_v2_2013_2014H1_2014H2",
-    "strategy_name": "trend_and_seasonality",
+    "strategy_name": "full",
     "model_type": "linear_regression",
     "features": [
       "lag_1d",
@@ -155,19 +209,19 @@
     "extra_params": {
       "hypothesis": "Combiner mémoire courte, tendance et lissage améliore la prédiction."
     },
-    "model_uri": "models:/m-b00e2ab28c7d4fad983b20f85820fce9",
+    "model_uri": "models:/m-de8d0efc716e4845a1dedd1b5be43641",
     "split": "split_v2_2013_2014H1_2014H2",
-    "strategy": "trend_and_seasonality",
+    "strategy": "full",
     "val_rmse": 6.7493744318515825,
     "val_mae": 3.791199723651532,
     "val_r2": 0.9720882986288714,
     "hypothesis": "Combiner mémoire courte, tendance et lissage améliore la prédiction."
   },
   {
-    "run_id": "13b28e82e9f94050834c1bf91da21993",
+    "run_id": "ec25fc0aee094640b2ae9699c2d344b0",
     "run_name": "ridge",
     "split_name": "split_v1_2011-2012_2013_2014",
-    "strategy_name": "trend_and_seasonality",
+    "strategy_name": "full",
     "model_type": "ridge",
     "features": [
       "lag_1d",
@@ -185,19 +239,19 @@
     "extra_params": {
       "alpha": 1.0
     },
-    "model_uri": "models:/m-136135cd55a443d088710d2b0a8e7a80",
+    "model_uri": "models:/m-2ba2232d12854873afb3833fcf3471f5",
     "split": "split_v1_2011-2012_2013_2014",
-    "strategy": "trend_and_seasonality",
+    "strategy": "full",
     "val_rmse": 7.349370379491212,
     "val_mae": 4.059459325047691,
     "val_r2": 0.9724067622015287,
     "alpha": 1.0
   },
   {
-    "run_id": "d52a2de351ff43c7a962e0d84be10fc8",
+    "run_id": "894192c84e46498d891e40e5fa30cca4",
     "run_name": "ridge",
     "split_name": "split_v1_2011-2012_2013_2014",
-    "strategy_name": "trend_and_seasonality",
+    "strategy_name": "full",
     "model_type": "ridge",
     "features": [
       "lag_1d",
@@ -215,19 +269,19 @@
     "extra_params": {
       "alpha": 1000.0
     },
-    "model_uri": "models:/m-726916c10ded4ca4b118d32deb8cbcec",
+    "model_uri": "models:/m-b97e0bb62b63405db35a9bf2139dc6c3",
     "split": "split_v1_2011-2012_2013_2014",
-    "strategy": "trend_and_seasonality",
+    "strategy": "full",
     "val_rmse": 7.349379644203458,
     "val_mae": 4.059461316201934,
     "val_r2": 0.9724066926326933,
     "alpha": 1000.0
   },
   {
-    "run_id": "4c67b6e4a9dc4221945c4480751e6c9b",
+    "run_id": "34677159b77a44d1b0a6f9d36d6deb1b",
     "run_name": "ridge",
     "split_name": "split_v1_2011-2012_2013_2014",
-    "strategy_name": "trend_and_seasonality",
+    "strategy_name": "full",
     "model_type": "ridge",
     "features": [
       "lag_1d",
@@ -245,19 +299,19 @@
     "extra_params": {
       "alpha": 1000000000.0
     },
-    "model_uri": "models:/m-3460794c196d43c9893e7ebe2c4b75ba",
+    "model_uri": "models:/m-409dfe829eb746f3a236186f387aeb42",
     "split": "split_v1_2011-2012_2013_2014",
-    "strategy": "trend_and_seasonality",
+    "strategy": "full",
     "val_rmse": 11.015460982570142,
     "val_mae": 7.162344507561931,
     "val_r2": 0.9380119824383638,
     "alpha": 1000000000.0
   },
   {
-    "run_id": "d5e849f05da3457989aef8a2fa7efea3",
+    "run_id": "38188d17a6ca4964bb6b5deded5b2b9d",
     "run_name": "ridge-final",
     "split_name": "split_v1_2011-2012_2013_2014",
-    "strategy_name": "trend_and_seasonality",
+    "strategy_name": "full",
     "model_type": "ridge_final",
     "features": [
       "lag_1d",
@@ -276,13 +330,13 @@
       "best_alpha": 1.0,
       "best_features": "lag_1d,lag_7d,lag_30d,lag_365d,rolling_mean_7d,rolling_mean_30d"
     },
-    "model_uri": "models:/m-87c4aea24bc74fdcad415cb79ae9117f"
+    "model_uri": "models:/m-ddc5be74079a4f13b9eadad91b58e003"
   },
   {
-    "run_id": "a64783a9bf024bd19d92d8e6b6f30416",
+    "run_id": "151bfd90256b438598971a517ac250a1",
     "run_name": "hist-gradient-boosting",
     "split_name": "split_v1_2011-2012_2013_2014",
-    "strategy_name": "trend_and_seasonality",
+    "strategy_name": "full",
     "model_type": "hist_gradient_boosting",
     "features": [
       "lag_1d",
@@ -302,6 +356,6 @@
       "max_iter": 150,
       "max_leaf_nodes": 31
     },
-    "model_uri": "models:/m-a9d5ff61bdbc46d5bf03cbd8c0b7c230"
+    "model_uri": "models:/m-9277872d974c4e38b223c7e6b6966027"
   }
 ]
