@@ -197,25 +197,51 @@ L'URI MLflow est récupérée depuis la configuration de la VM :
 mlflow.get_tracking_uri()
 ```
 
+Pour éviter les confusions entre plusieurs URLs nip.io, fixer explicitement l'URI avant chaque session :
+
+```bash
+export MLFLOW_TRACKING_URI="https://mlflow.10-53-101-61.nip.io"
+```
+
 ## DVC
 
 Les datasets volumineux ne doivent pas être commit directement dans Git.
 
-Pour matérialiser un split, passer dans le notebook :
+Le projet expose maintenant un pipeline DVC déclaratif dans [dvc.yaml](dvc.yaml) avec deux stages :
 
-```python
-WRITE_DVC_SPLITS = True
-```
+- `prepare_modelling_data` : génère `data/modelling/features.parquet` et `data/modelling/target.parquet`.
+- `materialize_temporal_splits` : génère les splits parquet dans `data/splits/`.
 
-Puis versionner par exemple :
+Exécuter le pipeline complet :
 
 ```bash
-dvc add data/splits/split_v1_2011-2012_2013_2014
-git add data/splits/split_v1_2011-2012_2013_2014.dvc data/splits/.gitignore
-git commit -m "data: version temporal split v1"
+dvc repro
 ```
 
-Même principe pour le split v2.
+Exécuter uniquement la préparation :
+
+```bash
+dvc repro prepare_modelling_data
+```
+
+Exécuter uniquement la matérialisation des splits :
+
+```bash
+dvc repro materialize_temporal_splits
+```
+
+Visualiser le graphe des stages :
+
+```bash
+dvc dag
+```
+
+Pour versionner un changement de pipeline ou de données recalculées :
+
+```bash
+git add dvc.yaml dvc.lock .gitignore
+git commit -m "dvc: add modelling and split stages"
+```
 
 ## Précaution RAM
 

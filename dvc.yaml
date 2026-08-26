@@ -1,0 +1,26 @@
+stages:
+  prepare_modelling_data:
+    cmd: .venv/bin/python data/code/cli.py
+    deps:
+      - data/code/cli.py
+      - data/code/constants.py
+      - data/code/loading.py
+      - data/code/paths.py
+      - data/code/processing.py
+      - data/LD2011_2014.txt
+      - data/raw/raw.txt
+      - data/processed/filtered_individuals.csv
+    outs:
+      - data/modelling/features.parquet
+      - data/modelling/target.parquet
+
+  materialize_temporal_splits:
+    cmd: .venv/bin/python data/code/materialize_splits.py
+    deps:
+      - data/code/materialize_splits.py
+      - data/code/ml_pipeline.py
+      - data/modelling/features.parquet
+      - data/modelling/target.parquet
+    outs:
+      - data/splits/split_v1_2011-2012_2013_2014
+      - data/splits/split_v2_2013_2014H1_2014H2

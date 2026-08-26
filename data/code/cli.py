@@ -44,7 +44,8 @@ def main():
         df_features.groupby("individual")["timestamp"]
         .diff()
         .dropna()
-        .eq(pd.Timedelta(minutes=15))
+        .dt.total_seconds()
+        .eq(15 * 60)
         .all()
     ), "Dataset is not sampled at 15 minutes intervals. Lag features will be incorrect."
     assert (

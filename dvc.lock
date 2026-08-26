@@ -1,0 +1,76 @@
+schema: '2.0'
+stages:
+  prepare_modelling_data:
+    cmd: .venv/bin/python data/code/cli.py
+    deps:
+    - path: data/LD2011_2014.txt
+      hash: md5
+      md5: e317add771cebd2df4121e50570eaa25
+      size: 710998915
+    - path: data/code/cli.py
+      hash: md5
+      md5: a83266a33b2aabed922df13623d1cc2c
+      size: 2871
+    - path: data/code/constants.py
+      hash: md5
+      md5: 8a9ab2a70fbdbe873810898618bb6cb0
+      size: 435
+    - path: data/code/loading.py
+      hash: md5
+      md5: ef9243337fa521488162ccae534e6c32
+      size: 209
+    - path: data/code/paths.py
+      hash: md5
+      md5: bdfa5431fd1ce7ccb68cf94977b97cdb
+      size: 318
+    - path: data/code/processing.py
+      hash: md5
+      md5: 51ee3521c5a00ff307da81840e3a0ebe
+      size: 453
+    - path: data/processed/filtered_individuals.csv
+      hash: md5
+      md5: 6a9cfb2e40d353db87b2637d43933a33
+      size: 907
+    - path: data/raw/raw.txt
+      hash: md5
+      md5: e317add771cebd2df4121e50570eaa25
+      size: 710998915
+    outs:
+    - path: data/modelling/features.parquet
+      hash: md5
+      md5: 68797200b40e89cc5b3c8f47e02b7def
+      size: 498089537
+    - path: data/modelling/target.parquet
+      hash: md5
+      md5: 035fb8c97ff4803be47cce44eb0ea035
+      size: 161260882
+  materialize_temporal_splits:
+    cmd: .venv/bin/python data/code/materialize_splits.py
+    deps:
+    - path: data/code/materialize_splits.py
+      hash: md5
+      md5: c948cdb6cedd9aa6a0914522a3d791fc
+      size: 770
+    - path: data/code/ml_pipeline.py
+      hash: md5
+      md5: cedb56cd5b04e3d826e8dc90057dbee8
+      size: 15096
+    - path: data/modelling/features.parquet
+      hash: md5
+      md5: 68797200b40e89cc5b3c8f47e02b7def
+      size: 498089537
+    - path: data/modelling/target.parquet
+      hash: md5
+      md5: 035fb8c97ff4803be47cce44eb0ea035
+      size: 161260882
+    outs:
+    - path: data/splits/split_v1_2011-2012_2013_2014
+      hash: md5
+      md5: f502a55a61fa7b4048c32e0d5d31786d.dir
+      size: 298103138
+      nfiles: 4
+    - path: data/splits/split_v2_2013_2014H1_2014H2
+      hash: md5
+      md5: ff7bea192700a3e2016c6391b6388b4d.dir
+      size: 200844256
+      nfiles: 4
