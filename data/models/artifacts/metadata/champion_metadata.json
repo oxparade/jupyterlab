@@ -1,5 +1,5 @@
 {
-  "run_id": "e025d024c3744c858a1031d3810f0b67",
+  "run_id": "2efe323eb29d45a1b6b4dae2bc914b91",
   "run_name": "ridge-final",
   "split_name": "split_v1_2011-2012_2013_2014",
   "strategy_name": "trend_and_seasonality",
@@ -21,5 +21,5 @@
     "best_alpha": 1.0,
     "best_features": "lag_1d,lag_7d,lag_30d,lag_365d,rolling_mean_7d,rolling_mean_30d"
   },
-  "model_uri": "models:/m-124a96137b0143d491bd962c66bce266"
+  "model_uri": "models:/m-92d4d3b8c75145fda73d36dcdc776125"
 }
