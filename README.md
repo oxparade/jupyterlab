@@ -98,6 +98,7 @@ Endpoints principaux :
 
 - `GET /health` : vérifie que le service et le modèle sont disponibles ;
 - `POST /predict` : retourne une prédiction pour un couple `individual` / `timestamp`.
+- `POST /predict/batch` : retourne plusieurs prédictions dans une seule requête.
 
 L’interface Swagger est disponible sur `/docs`.
 

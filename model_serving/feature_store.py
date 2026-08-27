@@ -81,6 +81,9 @@ class InMemoryFeatureStore:
 
         return {name: float(feature_row[name]) for name in required_features}
 
+    def get_features_batch(self, items: list[tuple[str, datetime]]) -> list[dict[str, float]]:
+        return [self.get_features(individual, timestamp) for individual, timestamp in items]
+
 
 @lru_cache(maxsize=1)
 def get_feature_store() -> InMemoryFeatureStore:

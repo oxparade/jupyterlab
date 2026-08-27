@@ -4,7 +4,14 @@ from fastapi import Depends, FastAPI, HTTPException, status
 
 from .feature_store import FeatureNotFoundError, InMemoryFeatureStore, get_feature_store
 from .model_service import RegistryModelLoadError, RegistryModelService, get_model_service
-from .schemas import HealthResponse, PredictionRequest, PredictionResponse
+from .schemas import (
+    BatchPredictionItem,
+    BatchPredictionRequest,
+    BatchPredictionResponse,
+    HealthResponse,
+    PredictionRequest,
+    PredictionResponse,
+)
 from .settings import get_settings
 
 
@@ -64,6 +71,46 @@ def create_app() -> FastAPI:
             prediction=prediction,
             features=features,
         )
+
+    @app.post("/predict/batch", response_model=BatchPredictionResponse, tags=["prediction"])
+    def predict_batch(
+        payload: BatchPredictionRequest,
+        feature_store: InMemoryFeatureStore = Depends(get_feature_store),
+        service: RegistryModelService = Depends(get_model_service),
+    ) -> BatchPredictionResponse:
+        if not payload.items:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail="items must not be empty.")
+
+        try:
+            service.load()
+        except RegistryModelLoadError as exc:
+            raise HTTPException(status_code=status.HTTP_503_SERVICE_UNAVAILABLE, detail=str(exc)) from exc
+
+        batch_items: list[BatchPredictionItem] = []
+        for item in payload.items:
+            try:
+                features = feature_store.get_features(item.individual, item.timestamp)
+                prediction = service.predict(features)
+            except FeatureNotFoundError as exc:
+                batch_items.append(
+                    BatchPredictionItem(
+                        individual=item.individual,
+                        timestamp=item.timestamp,
+                        error=str(exc),
+                    )
+                )
+                continue
+
+            batch_items.append(
+                BatchPredictionItem(
+                    individual=item.individual,
+                    timestamp=item.timestamp,
+                    prediction=prediction,
+                    features=features,
+                )
+            )
+
+        return BatchPredictionResponse(model_uri=service.model_uri, items=batch_items)
 
     return app
 
