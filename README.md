@@ -84,6 +84,23 @@ Notebook d'expérimentation aligné avec le TP02 :
 - analyse des erreurs par client ;
 - modèle bonus optionnel.
 
+### Service FastAPI de prédiction
+
+Le TP03 ajoute un service REST pour exposer le modèle promu dans MLflow.
+
+Lancement local :
+
+```bash
+uv run python -m model_serving.cli
+```
+
+Endpoints principaux :
+
+- `GET /health` : vérifie que le service et le modèle sont disponibles ;
+- `POST /predict` : retourne une prédiction pour un couple `individual` / `timestamp`.
+
+L’interface Swagger est disponible sur `/docs`.
+
 ## Parquets générés dans `data/modelling/`
 
 Les notebooks de training et de test s'appuient sur les fichiers générés par le pipeline de préparation :
