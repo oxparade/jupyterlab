@@ -1,0 +1,96 @@
+from pathlib import Path
+from typing import List, Tuple, Dict, Optional
+
+import pandas as pd
+import numpy as np
+from sklearn.linear_model import Ridge
+
+
+def load_data(path: Optional[str] = None, nrows: Optional[int] = None) -> pd.DataFrame:
+    """Load the dataset and convert to kWh per 15-min interval.
+
+    Defaults to data/LD2011_2014.txt if no path provided.
+    """
+    if path is None:
+        path = Path("data") / "LD2011_2014.txt"
+    df = pd.read_csv(path, sep=";", decimal=",", index_col=0, parse_dates=True, nrows=nrows)
+    df = df.astype("float32")
+    # convert average kW over 15-min interval -> kWh in that interval
+    df = df / 4.0
+    return df
+
+
+def build_features(
+    df: pd.DataFrame,
+    lags: List[int] = [96, 96 * 7, 96 * 30, 96 * 365],
+    rolling_windows: List[int] = [96 * 7, 96 * 30],
+) -> pd.DataFrame:
+    """Construct a stacked long DataFrame with features for every client.
+
+    Returned frame has columns: consumption, lag_1d, lag_7d, lag_30d, rolling_mean_7d, rolling_mean_30d, client
+    Index is the timestamp and rows are stacked for all clients.
+    """
+    frames = []
+    for name in df.columns:
+        one = df[[name]].copy()
+        one.columns = ["consumption"]
+        # standard lags used in the notebook
+        one["lag_1d"] = one["consumption"].shift(96)
+        one["lag_7d"] = one["consumption"].shift(96 * 7)
+        one["lag_30d"] = one["consumption"].shift(96 * 30)
+        # rolling mean computed on shifted consumption so the target cannot peek
+        one["rolling_mean_7d"] = one["consumption"].shift(1).rolling(96 * 7).mean().astype("float32")
+        one["rolling_mean_30d"] = one["consumption"].shift(1).rolling(96 * 30).mean().astype("float32")
+        one["client"] = name
+        frames.append(one)
+
+    tmp = pd.concat(frames).sort_index()
+    tmp["client"] = tmp["client"].astype("category")
+    return tmp
+
+
+def split_chronological(data: pd.DataFrame, train_frac: float = 0.8) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    """Chronological split by timestamp (no timestamp appears in both splits).
+
+    We split on unique timestamps so that all client rows for a given timestamp
+    belong to the same side of the split.
+    """
+    times = data.index.unique().sort_values()
+    if len(times) < 2:
+        raise ValueError("Not enough distinct timestamps to split")
+    cutoff = int(len(times) * train_frac)
+    if cutoff < 1:
+        cutoff = 1
+    if cutoff >= len(times):
+        cutoff = len(times) - 1
+    cutoff_time = times[cutoff - 1]
+    train = data.loc[data.index <= cutoff_time]
+    test = data.loc[data.index > cutoff_time]
+    return train, test
+
+
+def get_X_y(df: pd.DataFrame, features: List[str]) -> Tuple[pd.DataFrame, pd.Series]:
+    X = df[features]
+    y = df["consumption"]
+    return X, y
+
+
+def train_ridge(X: pd.DataFrame, y: pd.Series, alpha: float = 1.0) -> Ridge:
+    model = Ridge(alpha=alpha)
+    model.fit(X, y)
+    return model
+
+
+def evaluate(model, X: pd.DataFrame, y: pd.Series) -> Dict[str, float]:
+    pred = model.predict(X)
+    errors = y.to_numpy() - pred
+    rmse = float(np.sqrt((errors ** 2).mean()))
+    mae = float(np.abs(errors).mean())
+    return {"rmse": rmse, "mae": mae}
+
+
+def save_model(model, path: str = "model.pkl") -> None:
+    import pickle
+
+    with open(path, "wb") as fh:
+        pickle.dump(model, fh)
