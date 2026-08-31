@@ -4,7 +4,15 @@ import tempfile
 import pandas as pd
 import numpy as np
 
-from pipeline_steps import load_data, build_features, split_chronological, get_X_y, train_ridge, evaluate
+from pipeline_steps import (
+    load_data,
+    build_features,
+    split_chronological,
+    select_best_alpha_time_cv,
+    get_X_y,
+    train_ridge,
+    evaluate,
+)
 
 # ---------------------------------------------------------------------------
 # Shared helpers
@@ -77,3 +85,22 @@ def test_model_beats_naive_baseline():
     assert model_rmse <= naive_rmse * 1.01, (
         f"Model RMSE ({model_rmse:.4f}) significantly worse than naive baseline ({naive_rmse:.4f})"
     )
+
+
+def test_time_cv_selects_alpha_and_reports_rmse():
+    df = small_df(nrows=12000, nclients=4)
+    feat = build_features(df)
+    train, _ = split_chronological(feat, train_frac=0.8)
+    features = ["lag_1d", "lag_7d", "lag_30d", "rolling_mean_30d"]
+
+    alphas = (0.1, 1.0, 10.0)
+    best_alpha, mean_rmse = select_best_alpha_time_cv(
+        train,
+        features=features,
+        alphas=alphas,
+        n_splits=3,
+    )
+
+    assert best_alpha in alphas
+    assert set(mean_rmse.keys()) == set(alphas)
+    assert all(np.isfinite(value) and value >= 0 for value in mean_rmse.values())

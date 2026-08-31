@@ -93,6 +93,75 @@ def train_ridge(X: pd.DataFrame, y: pd.Series, alpha: float = 1.0) -> Ridge:
     return model
 
 
+def _estimate_warmup_periods(features: List[str]) -> int:
+    """Estimate minimum history (in 15-min periods) required by lag/rolling features."""
+    warmup = 1
+    for name in features:
+        if name.startswith("lag_"):
+            days = int(name.replace("lag_", "").replace("d", ""))
+            warmup = max(warmup, days * _PERIODS_PER_DAY)
+        elif name.startswith("rolling_mean_"):
+            days = int(name.replace("rolling_mean_", "").replace("d", ""))
+            warmup = max(warmup, days * _PERIODS_PER_DAY + 1)
+    return warmup
+
+
+def select_best_alpha_time_cv(
+    data: pd.DataFrame,
+    features: List[str],
+    alphas: Tuple[float, ...] = (0.1, 1.0, 10.0),
+    n_splits: int = 3,
+) -> Tuple[float, Dict[float, float]]:
+    """Select alpha with expanding-window CV, preserving chronology.
+
+    The validation windows are always strictly after each training window.
+    """
+    if n_splits < 1:
+        raise ValueError("n_splits must be >= 1")
+
+    times = data.index.unique().sort_values()
+    warmup_periods = _estimate_warmup_periods(features)
+    if len(times) <= warmup_periods + n_splits:
+        raise ValueError("Not enough timestamps for time-series CV with requested splits")
+
+    usable_times = times[warmup_periods:]
+    block = len(usable_times) // (n_splits + 1)
+    if block < 1:
+        raise ValueError("Not enough timestamps to build expanding CV folds")
+
+    per_alpha_scores: Dict[float, List[float]] = {float(alpha): [] for alpha in alphas}
+
+    for fold in range(1, n_splits + 1):
+        train_end_idx = fold * block
+        val_end_idx = (fold + 1) * block if fold < n_splits else len(usable_times)
+
+        train_end_time = usable_times[train_end_idx - 1]
+        val_start_time = usable_times[train_end_idx]
+        val_end_time = usable_times[val_end_idx - 1]
+
+        train_fold = data.loc[data.index <= train_end_time]
+        val_fold = data.loc[(data.index >= val_start_time) & (data.index <= val_end_time)]
+
+        clean_train = train_fold.dropna(subset=features + ["consumption"])
+        clean_val = val_fold.dropna(subset=features + ["consumption"])
+        if clean_train.empty or clean_val.empty:
+            raise ValueError(
+                "A CV fold is empty after dropna; increase data size or reduce split count"
+            )
+
+        Xtr, ytr = get_X_y(clean_train, features)
+        Xva, yva = get_X_y(clean_val, features)
+
+        for alpha in alphas:
+            model = train_ridge(Xtr, ytr, alpha=float(alpha))
+            rmse = evaluate(model, Xva, yva)["rmse"]
+            per_alpha_scores[float(alpha)].append(rmse)
+
+    mean_rmse = {alpha: float(np.mean(scores)) for alpha, scores in per_alpha_scores.items()}
+    best_alpha = min(mean_rmse, key=mean_rmse.get)
+    return best_alpha, mean_rmse
+
+
 def evaluate(model, X: pd.DataFrame, y: pd.Series) -> Dict[str, float]:
     pred = model.predict(X)
     errors = y.to_numpy() - pred

@@ -1,4 +1,5 @@
 import argparse
+import logging
 from pathlib import Path
 
 import pandas as pd
@@ -7,6 +8,7 @@ from pipeline_steps import (
     load_data,
     build_features,
     split_chronological,
+    select_best_alpha_time_cv,
     get_X_y,
     train_ridge,
     evaluate,
@@ -14,12 +16,23 @@ from pipeline_steps import (
 )
 
 
+logger = logging.getLogger("train")
+
+
 def main():
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s | %(levelname)s | %(message)s")
+
     parser = argparse.ArgumentParser(description="Train pipeline for electricity forecasting")
     parser.add_argument("--input", default=None, help="Path to LD2011_2014.txt (CSV)")
     parser.add_argument("--nrows", type=int, default=None, help="Limit rows when loading (for fast dev)")
     parser.add_argument("--train-fraction", type=float, default=0.8)
     parser.add_argument("--alpha", type=float, default=1.0)
+    parser.add_argument(
+        "--alphas",
+        default="0.1,1.0,10.0",
+        help="Comma-separated alpha candidates for chronological CV",
+    )
+    parser.add_argument("--cv-splits", type=int, default=3, help="Number of expanding CV splits")
     parser.add_argument("--model-out", default="model.pkl")
     args = parser.parse_args()
 
@@ -28,18 +41,35 @@ def main():
     train, test = split_chronological(features_df, train_frac=args.train_fraction)
 
     features = ["lag_1d", "lag_7d", "lag_30d", "rolling_mean_30d"]
+
+    alpha_candidates = tuple(float(value.strip()) for value in args.alphas.split(",") if value.strip())
+    if not alpha_candidates:
+        alpha_candidates = (args.alpha,)
+
+    best_alpha, cv_rmse = select_best_alpha_time_cv(
+        train,
+        features=features,
+        alphas=alpha_candidates,
+        n_splits=args.cv_splits,
+    )
+    for alpha, rmse in sorted(cv_rmse.items(), key=lambda item: item[0]):
+        logger.info("cv_rmse alpha=%.4f rmse=%.4f", alpha, rmse)
+    logger.info("selected_alpha=%.4f (lowest mean cv RMSE)", best_alpha)
+
     Xtr, ytr = get_X_y(train.dropna(subset=features + ["consumption"]), features)
     Xte, yte = get_X_y(test.dropna(subset=features + ["consumption"]), features)
 
-    model = train_ridge(Xtr, ytr, alpha=args.alpha)
+    model = train_ridge(Xtr, ytr, alpha=best_alpha)
     metrics = evaluate(model, Xte, yte)
     print(f"test RMSE {metrics['rmse']:.3f} | MAE {metrics['mae']:.3f}")
+    logger.info("test_rmse=%.4f test_mae=%.4f", metrics["rmse"], metrics["mae"])
+    logger.info("model_ready_for_registration rmse=%.4f model_path=%s", metrics["rmse"], args.model_out)
 
     save_model(model, args.model_out)
 
     # Reproducibility self-check: train a second time and compare RMSE
     import numpy as _np
-    model2 = train_ridge(Xtr, ytr, alpha=args.alpha)
+    model2 = train_ridge(Xtr, ytr, alpha=best_alpha)
     metrics2 = evaluate(model2, Xte, yte)
     assert _np.isclose(metrics["rmse"], metrics2["rmse"]), (
         f"Reproducibility check FAILED: run1={metrics['rmse']:.4f} run2={metrics2['rmse']:.4f}"
