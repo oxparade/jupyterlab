@@ -37,6 +37,15 @@ def main():
 
     save_model(model, args.model_out)
 
+    # Reproducibility self-check: train a second time and compare RMSE
+    import numpy as _np
+    model2 = train_ridge(Xtr, ytr, alpha=args.alpha)
+    metrics2 = evaluate(model2, Xte, yte)
+    assert _np.isclose(metrics["rmse"], metrics2["rmse"]), (
+        f"Reproducibility check FAILED: run1={metrics['rmse']:.4f} run2={metrics2['rmse']:.4f}"
+    )
+    print("reproducibility check OK (RMSE identical on two identical runs)")
+
 
 if __name__ == "__main__":
     main()
