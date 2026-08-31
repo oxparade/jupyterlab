@@ -20,27 +20,39 @@ def load_data(path: Optional[str] = None, nrows: Optional[int] = None) -> pd.Dat
     return df
 
 
+_PERIODS_PER_DAY = 96  # 15-min intervals in a day
+
+
+def _periods_to_label(periods: int) -> str:
+    """Convert a lag/window expressed in 15-min periods to a human-readable label (e.g. '7d')."""
+    days = periods // _PERIODS_PER_DAY
+    return f"{days}d"
+
+
 def build_features(
     df: pd.DataFrame,
-    lags: List[int] = [96, 96 * 7, 96 * 30, 96 * 365],
-    rolling_windows: List[int] = [96 * 7, 96 * 30],
+    lags: Tuple[int, ...] = (96, 96 * 7, 96 * 30, 96 * 365),
+    rolling_windows: Tuple[int, ...] = (96 * 7, 96 * 30),
 ) -> pd.DataFrame:
     """Construct a stacked long DataFrame with features for every client.
 
-    Returned frame has columns: consumption, lag_1d, lag_7d, lag_30d, rolling_mean_7d, rolling_mean_30d, client
-    Index is the timestamp and rows are stacked for all clients.
+    Column names are derived from *lags* and *rolling_windows*:
+      - lag_{n}d          for each lag of n days
+      - rolling_mean_{n}d for each rolling window of n days
+    Index is the timestamp; rows are stacked for all clients.
     """
     frames = []
     for name in df.columns:
         one = df[[name]].copy()
         one.columns = ["consumption"]
-        # standard lags used in the notebook
-        one["lag_1d"] = one["consumption"].shift(96)
-        one["lag_7d"] = one["consumption"].shift(96 * 7)
-        one["lag_30d"] = one["consumption"].shift(96 * 30)
-        # rolling mean computed on shifted consumption so the target cannot peek
-        one["rolling_mean_7d"] = one["consumption"].shift(1).rolling(96 * 7).mean().astype("float32")
-        one["rolling_mean_30d"] = one["consumption"].shift(1).rolling(96 * 30).mean().astype("float32")
+        for lag in lags:
+            one[f"lag_{_periods_to_label(lag)}"] = one["consumption"].shift(lag)
+        # rolling means are computed on shifted consumption so the target cannot peek
+        shifted = one["consumption"].shift(1)
+        for window in rolling_windows:
+            one[f"rolling_mean_{_periods_to_label(window)}"] = (
+                shifted.rolling(window).mean().astype("float32")
+            )
         one["client"] = name
         frames.append(one)
 

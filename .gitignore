@@ -11,6 +11,7 @@ __pycache__/
 
 # Données (si trop lourdes, utilisez DVC ou ignorez-les)
 data/LD2011_2014.txt
+data/notebooks/LD2011_2014_extrait.txt
 data/raw/raw.txt
 data/processed/*.csv
 data/modelling/*.parquet
