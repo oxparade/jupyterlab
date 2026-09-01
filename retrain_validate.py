@@ -32,7 +32,8 @@ def main(
     _run(
         [
             "dvc",
-            "repro",
+            "exp",
+            "run",
             "prep_mlflow_data",
             "--set-param",
             f"prep_mlflow_data.strategy={strategy}",

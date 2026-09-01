@@ -339,7 +339,7 @@ dvc repro prep_mlflow_data
 Changer les paramètres sans modifier le code :
 
 ```bash
-dvc repro prep_mlflow_data --set-param prep_mlflow_data.strategy=seasonality
+dvc exp run prep_mlflow_data --set-param prep_mlflow_data.strategy=seasonality
 ```
 
 Les `.parquet` volumineux restent hors Git (ignorés), tandis que `dvc.yaml`, `dvc.lock`
