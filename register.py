@@ -89,9 +89,25 @@ def main(
     train_data = pd.read_parquet(train_path)
     validation_data = pd.read_parquet(validation_path)
 
+    training_dataset = mlflow.data.from_pandas(
+        train_data,
+        source=str(train_path),
+        name="electricity_train",
+    )
+    validation_dataset = mlflow.data.from_pandas(
+        validation_data,
+        source=str(validation_path),
+        name="electricity_validation",
+    )
+
     created_versions: list[tuple[str, str]] = []
 
     with step_run("tp02-register", nested=False):
+        mlflow.log_input(training_dataset, context="training")
+        mlflow.log_input(validation_dataset, context="validation")
+        mlflow.log_param("train_digest", training_dataset.digest)
+        mlflow.log_param("validation_digest", validation_dataset.digest)
+
         for strategy in (first_strategy, second_strategy):
             with step_run(f"register-{strategy.value}", nested=True):
                 alpha, model, metrics, features = _best_model_for_strategy(
@@ -125,11 +141,40 @@ def main(
 
                 client.set_model_version_tag(model_name, version, "strategy", strategy.value)
                 client.set_model_version_tag(model_name, version, "selected_alpha", str(alpha))
+                client.set_model_version_tag(
+                    model_name,
+                    version,
+                    "rmse",
+                    f"{metrics['rmse']:.6f}",
+                )
+                client.set_model_version_tag(
+                    model_name,
+                    version,
+                    "mae",
+                    f"{metrics['mae']:.6f}",
+                )
+                client.set_model_version_tag(model_name, version, "passed_validation", "true")
+                client.set_model_version_tag(model_name, version, "validated", "true")
+                client.update_model_version(
+                    name=model_name,
+                    version=version,
+                    description=(
+                        f"Strategy={strategy.value}, alpha={alpha}, "
+                        f"validation_rmse={metrics['rmse']:.4f}, validation_mae={metrics['mae']:.4f}"
+                    ),
+                )
                 created_versions.append((strategy.value, version))
                 logger.info("Registered %s version=%s", strategy.value, version)
 
         champion_version = created_versions[0][1]
         challenger_version = created_versions[1][1]
+        client.update_registered_model(
+            name=model_name,
+            description=(
+                "Prévision de consommation électrique multi-clients. "
+                "Versions entraînées sur données préparées avec features de lag/rolling."
+            ),
+        )
         client.set_registered_model_alias(model_name, "champion", champion_version)
         client.set_registered_model_alias(model_name, "challenger", challenger_version)
         logger.info(

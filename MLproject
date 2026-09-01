@@ -34,7 +34,8 @@ entry_points:
   promote:
     parameters:
       model_name: {type: str, default: electricity_forecaster}
-    command: "python3 promote.py --model-name {model_name}"
+      min_gain: {type: float, default: 0.02}
+    command: "python3 promote.py --model-name {model_name} --min-gain {min_gain}"
 
   main:
     parameters:

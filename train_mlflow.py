@@ -35,6 +35,17 @@ def main(
 
     train_data = pd.read_parquet(data)
     validation_data = pd.read_parquet(validation)
+
+    training_dataset = mlflow.data.from_pandas(
+        train_data,
+        source=str(data),
+        name="electricity_train",
+    )
+    validation_dataset = mlflow.data.from_pandas(
+        validation_data,
+        source=str(validation),
+        name="electricity_validation",
+    )
     features = [column for column in train_data.columns if column != TARGET]
 
     X_train, y_train = train_data[features], train_data[TARGET]
@@ -52,6 +63,8 @@ def main(
         run_context = mlflow.start_run(run_name="ridge-train")
 
     with run_context:
+        mlflow.log_input(training_dataset, context="training")
+        mlflow.log_input(validation_dataset, context="validation")
         mlflow.log_param("train_path", str(data))
         mlflow.log_param("validation_path", str(validation))
         mlflow.log_param("n_features", len(features))
