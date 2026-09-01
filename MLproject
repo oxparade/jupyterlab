@@ -20,7 +20,8 @@ entry_points:
     parameters:
       run_id: {type: str}
       data: {type: path, default: data/processed/test.parquet}
-    command: "python3 predict_mlflow.py --model runs:/{run_id}/model --data {data}"
+      reference_data: {type: path, default: data/processed/train.parquet}
+    command: "python3 predict_mlflow.py --model runs:/{run_id}/model --data {data} --reference-data {reference_data}"
 
   register:
     parameters:
@@ -44,3 +45,13 @@ entry_points:
       host: {type: str, default: 127.0.0.1}
       port: {type: int, default: 5001}
     command: "python3 main.py --strategy {strategy} --split-strategy {split_strategy} --host {host} --port {port}"
+
+  retrain_validate:
+    parameters:
+      strategy: {type: str, default: mixed}
+      split_strategy: {type: str, default: full_history}
+      register_model: {type: str, default: false}
+      promote_model: {type: str, default: false}
+      model_name: {type: str, default: electricity_forecaster}
+      min_gain: {type: float, default: 0.02}
+    command: "python3 retrain_validate.py --strategy {strategy} --split-strategy {split_strategy} --register-model {register_model} --promote-model {promote_model} --model-name {model_name} --min-gain {min_gain}"

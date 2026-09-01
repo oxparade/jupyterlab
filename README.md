@@ -100,6 +100,7 @@ Notebook d'expérimentation aligné avec le TP02 :
 - comparaison RMSE / MAE ;
 - comparaison de deux stratégies de split ;
 - Ridge avec `alpha = [1, 1e3, 1e9]` ;
+- comparaison Ridge avec et sans standardisation ;
 - logging des coefficients ;
 - évaluation finale sur le test ;
 - analyse des erreurs par client ;
@@ -113,6 +114,12 @@ Lancement local :
 
 ```bash
 uv run python -m model_serving.cli
+```
+
+Si vous lancez le modèle via MLflow Projects, utilisez bien :
+
+```bash
+mlflow run . -e serve --env-manager local -P run_id=<run_id> -P host=127.0.0.1 -P port=5001
 ```
 
 Endpoints principaux :
@@ -256,6 +263,20 @@ Chaque run logge au minimum :
 - coefficients pour les modèles linéaires ;
 - artifact du modèle.
 
+Le training logge aussi des tags de reproductibilité quand ils sont disponibles :
+
+- `git_commit` ;
+- `git_branch` ;
+- `git_dirty` ;
+- `dvc_version` ;
+- `dvc_lock_sha256`.
+
+Les runs d’évaluation produisent également des diagnostics plus détaillés :
+
+- résidus globaux ;
+- résidus par heure, jour, mois et client ;
+- rapport de drift Evidently si la dépendance est installée.
+
 Le projet utilise MLflow comme source de vérité pour les modèles entraînés et promus.
 Les modèles destinés au serving sont rechargés depuis le Model Registry / les artifacts MLflow
 (`runs:/...` et `models:/...@alias`), plutôt que depuis des dumps locaux.
@@ -394,7 +415,7 @@ series.shift(1).rolling(window).mean()
 ### 3. Performance par client
 
 Une bonne RMSE globale peut masquer certains clients très mal prédits.
-Le notebook calcule donc aussi la MAE par `individual`.
+Le pipeline calcule maintenant aussi des résumés de résidus par client, heure, jour et mois.
 
 ### 4. Validation temporelle
 
@@ -406,7 +427,13 @@ le futur ne doit jamais servir à prédire le passé.
 Le jeu de test ne sert pas à choisir les features ou `alpha`.
 Il est utilisé après le choix du modèle pour obtenir une estimation finale de généralisation.
 
-## Pistes pour aller plus loin
+### 6. Drift
+
+Le drift est désormais mesuré automatiquement via Evidently lorsque le package est disponible.
+
+## Ce qui a été ajouté
+
+Les pistes ci-dessous ont finalement été implémentées dans le projet :
 
 - `TimeSeriesSplit` / backtesting temporel ;
 - comparaison avec `HistGradientBoostingRegressor` ;
@@ -416,3 +443,12 @@ Il est utilisé après le choix du modèle pour obtenir une estimation finale de
 - logging du hash Git et de la version DVC dans MLflow ;
 - enregistrement du meilleur modèle dans un Model Registry ;
 - pipeline automatisé de retraining et validation.
+
+Concrètement :
+
+- comparaison Ridge standardisé / non standardisé dans `train_mlflow.py` ;
+- artefacts de résidus détaillés dans `predict_mlflow.py` ;
+- tags Git/DVC dans les runs MLflow ;
+- rapport Evidently de drift ;
+- orchestrateur [retrain_validate.py](retrain_validate.py) ;
+- workflow GitHub Actions [retrain-validation.yml](.github/workflows/retrain-validation.yml).

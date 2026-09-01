@@ -45,7 +45,7 @@ def main(
     stacked = build_features(raw)
 
     features = MODELLING_FEATURES[strategy]
-    required_columns = [*features, TARGET]
+    required_columns = [*features, TARGET, "client"]
     clean = stacked.dropna(subset=required_columns)
 
     output.mkdir(parents=True, exist_ok=True)

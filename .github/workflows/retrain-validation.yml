@@ -1,0 +1,50 @@
+name: retrain-validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      strategy:
+        description: Feature strategy
+        required: false
+        default: mixed
+      split_strategy:
+        description: Temporal split strategy
+        required: false
+        default: full_history
+      register_model:
+        description: Register model in MLflow Registry
+        required: false
+        default: "false"
+      promote_model:
+        description: Promote challenger to champion
+        required: false
+        default: "false"
+  schedule:
+    - cron: "0 5 * * 1"
+
+jobs:
+  retrain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run retrain and validation pipeline
+        env:
+          MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
+        run: |
+          python retrain_validate.py \
+            --strategy "${{ github.event.inputs.strategy || 'mixed' }}" \
+            --split-strategy "${{ github.event.inputs.split_strategy || 'full_history' }}" \
+            --register-model "${{ github.event.inputs.register_model || 'false' }}" \
+            --promote-model "${{ github.event.inputs.promote_model || 'false' }}"
