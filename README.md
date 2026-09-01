@@ -235,6 +235,10 @@ Chaque run logge au minimum :
 - coefficients pour les modèles linéaires ;
 - artifact du modèle.
 
+Le projet utilise MLflow comme source de vérité pour les modèles entraînés et promus.
+Les modèles destinés au serving sont donc rechargés depuis le Model Registry / les artifacts MLflow,
+plutôt que depuis des dumps locaux `joblib`.
+
 L'URI MLflow est récupérée depuis la configuration de la VM :
 
 ```python

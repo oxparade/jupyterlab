@@ -1,8 +1,11 @@
 import os
 import tempfile
+from pathlib import Path
 
+import mlflow
 import pandas as pd
 import numpy as np
+from mlflow.tracking import MlflowClient
 
 from pipeline_steps import (
     load_data,
@@ -12,6 +15,7 @@ from pipeline_steps import (
     get_X_y,
     train_ridge,
     evaluate,
+    save_model,
 )
 
 # ---------------------------------------------------------------------------
@@ -104,3 +108,34 @@ def test_time_cv_selects_alpha_and_reports_rmse():
     assert best_alpha in alphas
     assert set(mean_rmse.keys()) == set(alphas)
     assert all(np.isfinite(value) and value >= 0 for value in mean_rmse.values())
+
+
+def test_save_model_logs_model_to_mlflow():
+    df = small_df(nrows=10000, nclients=5)
+    feat = build_features(df)
+    train, test = split_chronological(feat, train_frac=0.7)
+    features = ["lag_1d", "lag_7d", "lag_30d", "rolling_mean_30d"]
+    clean_train = train.dropna(subset=features + ["consumption"])
+    clean_test = test.dropna(subset=features + ["consumption"])
+    Xtr, ytr = get_X_y(clean_train, features)
+    Xte, _ = get_X_y(clean_test, features)
+
+    model = train_ridge(Xtr, ytr, alpha=1.0)
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tracking_db = Path(tmpdir) / "mlflow.db"
+        artifacts_dir = Path(tmpdir) / "artifacts"
+        mlflow.set_tracking_uri(f"sqlite:///{tracking_db.resolve()}")
+        client = MlflowClient()
+        experiment_id = client.create_experiment(
+            "pipeline-steps-tests",
+            artifact_location=artifacts_dir.resolve().as_uri(),
+        )
+        with mlflow.start_run(run_name="save-model-test", experiment_id=experiment_id):
+            model_uri = save_model(model, artifact_path="ridge-model", input_example=Xte.head(5))
+
+        loaded_model = mlflow.pyfunc.load_model(model_uri)
+        predictions = loaded_model.predict(Xte.head(3))
+
+    assert model_uri
+    assert len(predictions) == 3

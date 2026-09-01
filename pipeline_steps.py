@@ -170,8 +170,27 @@ def evaluate(model, X: pd.DataFrame, y: pd.Series) -> Dict[str, float]:
     return {"rmse": rmse, "mae": mae}
 
 
-def save_model(model, path: str = "model.pkl") -> None:
-    import pickle
+def save_model(
+    model,
+    artifact_path: str = "model",
+    *,
+    input_example: Optional[pd.DataFrame] = None,
+    registered_model_name: Optional[str] = None,
+) -> str:
+    import mlflow
+    from mlflow.models import infer_signature
+    from mlflow.sklearn import log_model as log_sklearn_model
 
-    with open(path, "wb") as fh:
-        pickle.dump(model, fh)
+    if mlflow.active_run() is None:
+        raise RuntimeError("An active MLflow run is required to log the model.")
+
+    log_kwargs: Dict[str, object] = {"name": artifact_path}
+    if input_example is not None and not input_example.empty:
+        predictions = model.predict(input_example)
+        log_kwargs["input_example"] = input_example
+        log_kwargs["signature"] = infer_signature(input_example, predictions)
+    if registered_model_name:
+        log_kwargs["registered_model_name"] = registered_model_name
+
+    model_info = log_sklearn_model(model, **log_kwargs)
+    return str(model_info.model_uri)

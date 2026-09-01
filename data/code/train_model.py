@@ -19,7 +19,6 @@ from mlflow.entities import ViewType
 from mlflow.models import infer_signature
 from mlflow.tracking import MlflowClient
 from mlflow.sklearn import log_model as log_sklearn_model
-import joblib
 import plotly.express as px
 import plotly.graph_objects as go
 from sklearn.base import clone
@@ -44,7 +43,6 @@ PROMOTE_CHAMPION = os.getenv("MLFLOW_PROMOTE_CHAMPION", "true").lower() in {"1",
 CHAMPION_ALIAS = os.getenv("MLFLOW_CHAMPION_ALIAS", "champion")
 WRITE_DVC_SPLITS = os.getenv("WRITE_DVC_SPLITS", "false").lower() in {"1", "true", "yes"}
 LOCAL_ARTIFACT_ROOT = Path("data/models/artifacts")
-LOCAL_MODEL_DIR = LOCAL_ARTIFACT_ROOT / "models"
 LOCAL_FIGURE_DIR = LOCAL_ARTIFACT_ROOT / "figures"
 LOCAL_REPORT_DIR = LOCAL_ARTIFACT_ROOT / "reports"
 LOCAL_METADATA_DIR = LOCAL_ARTIFACT_ROOT / "metadata"
@@ -160,7 +158,7 @@ def build_conda_environment_yaml(requirements_path: Path = Path("requirements.tx
         "  - pip:",
     ]
     lines.extend(f"      - {requirement}" for requirement in requirements)
-    resolved_packages = ["mlflow", "pandas", "numpy", "scikit-learn", "joblib", "skops", "plotly", "pyarrow"]
+    resolved_packages = ["mlflow", "pandas", "numpy", "scikit-learn", "plotly", "pyarrow"]
     lines.append("# resolved package versions from the current environment")
     for package_name in resolved_packages:
         try:
@@ -230,18 +228,6 @@ def write_metadata_database(records: list[dict[str, Any]], output_path: Path = L
             rows,
         )
         connection.commit()
-
-
-def save_model_serializations(model: Any, artifact_stem: str) -> None:
-    LOCAL_MODEL_DIR.mkdir(parents=True, exist_ok=True)
-    joblib.dump(model, str(LOCAL_MODEL_DIR / f"{artifact_stem}.joblib"))
-    try:
-        import skops.io as sio
-
-        sio.dump(model, LOCAL_MODEL_DIR / f"{artifact_stem}.skops")
-    except Exception as exc:  # pragma: no cover
-        print(f"Skipping skops export for {artifact_stem}: {exc}")
-
 
 def build_prediction_figure(y_true: pd.Series, y_pred: np.ndarray, title: str) -> go.Figure:
     frame = pd.DataFrame({"actual": y_true.to_numpy(), "predicted": np.asarray(y_pred)})
@@ -406,9 +392,6 @@ def run_one_experiment(
             input_example=X_valid.head(5),
             signature=signature,
         )
-        save_model_serializations(model, "model")
-        mlflow.log_artifact(str(LOCAL_MODEL_DIR / "model.joblib"), artifact_path="model")
-        mlflow.log_artifact(str(LOCAL_MODEL_DIR / "model.skops"), artifact_path="model")
         prediction_figure = build_prediction_figure(
             y_true=y_valid,
             y_pred=pred,
@@ -736,14 +719,6 @@ def main() -> None:
                 log_model_kwargs["registered_model_name"] = REGISTERED_MODEL_NAME
             log_model_kwargs["signature"] = final_signature
             model_info = log_sklearn_model(final_model, **log_model_kwargs)
-            champion_dir = Path("data/models/champions")
-            champion_dir.mkdir(parents=True, exist_ok=True)
-            champion_artifact_stem = f"champion_{best_strategy_name}_alpha_{best_alpha}"
-            champion_path = champion_dir / f"{champion_artifact_stem}.joblib"
-            joblib.dump(final_model, str(champion_path))
-            save_model_serializations(final_model, champion_artifact_stem)
-            mlflow.log_artifact(str(champion_path), artifact_path="champions")
-            mlflow.log_artifact(str(LOCAL_MODEL_DIR / f"{champion_artifact_stem}.skops"), artifact_path="champions")
             active_run = mlflow.active_run()
             assert active_run is not None
             champion_metadata = build_metadata_record(
