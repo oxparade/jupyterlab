@@ -36,10 +36,28 @@ déploiement / monitoring
 Le dataset UCI contient des mesures de consommation électrique de clients portugais,
 à une granularité de 15 minutes, sur plusieurs années.
 
-Dans la VM ENI, le fichier brut est placé dans :
+Le dataset est centralisé dans un dossier partagé, en amont du dossier TP :
 
 ```text
-data/raw/raw.txt
+shared/dataset/
+    LD2011_2014.txt
+    LD2011_2014_kwh.parquet
+```
+
+Initialisation recommandée (scripts formateur) :
+
+```bash
+uv run dataset.py download
+uv run dataset.py convert
+uv run python prep.py
+```
+
+Le script `prep.py` lit par défaut le parquet partagé en kWh et génère :
+
+```text
+data/processed/train.parquet
+data/processed/validation.parquet
+data/processed/test.parquet
 ```
 
 Les données préparées pour le modelling sont attendues dans :
@@ -218,10 +236,10 @@ Le notebook calcule également `R²` comme information complémentaire.
 
 ## MLflow
 
-L'expérience utilisée par défaut est :
+L'expérience utilisée par défaut par les scripts TP est :
 
 ```text
-electricity-load-tp02
+electricity_consumption_forecasting
 ```
 
 Chaque run logge au minimum :
@@ -239,8 +257,11 @@ Chaque run logge au minimum :
 - artifact du modèle.
 
 Le projet utilise MLflow comme source de vérité pour les modèles entraînés et promus.
-Les modèles destinés au serving sont donc rechargés depuis le Model Registry / les artifacts MLflow,
-plutôt que depuis des dumps locaux `joblib`.
+Les modèles destinés au serving sont rechargés depuis le Model Registry / les artifacts MLflow
+(`runs:/...` et `models:/...@alias`), plutôt que depuis des dumps locaux.
+
+Les scripts actifs du pipeline TP n'utilisent pas de sérialisation manuelle `pickle` / `joblib`
+pour livrer le modèle : on logge et sert au format MLflow Models (signature + input example).
 
 L'URI MLflow est récupérée depuis la configuration de la VM :
 
@@ -258,10 +279,17 @@ export MLFLOW_TRACKING_URI="https://mlflow.10-53-101-61.nip.io"
 
 Les datasets volumineux ne doivent pas être commit directement dans Git.
 
-Le projet expose maintenant un pipeline DVC déclaratif dans [dvc.yaml](dvc.yaml) avec deux stages :
+Le projet expose un pipeline DVC déclaratif dans [dvc.yaml](dvc.yaml) avec trois stages :
 
 - `prepare_modelling_data` : génère `data/modelling/features.parquet` et `data/modelling/target.parquet`.
 - `materialize_temporal_splits` : génère les splits parquet dans `data/splits/`.
+- `prep_mlflow_data` : exécute `prep.py` et génère `data/processed/train.parquet`,
+  `data/processed/validation.parquet`, `data/processed/test.parquet`.
+
+La stage `prep_mlflow_data` est paramétrée via [params.yaml](params.yaml) :
+
+- `prep_mlflow_data.strategy`
+- `prep_mlflow_data.split_strategy`
 
 Exécuter le pipeline complet :
 
@@ -279,6 +307,37 @@ Exécuter uniquement la matérialisation des splits :
 
 ```bash
 dvc repro materialize_temporal_splits
+```
+
+Exécuter uniquement la préparation MLflow :
+
+```bash
+dvc repro prep_mlflow_data
+```
+
+Changer les paramètres sans modifier le code :
+
+```bash
+dvc repro prep_mlflow_data --set-param prep_mlflow_data.strategy=seasonality
+```
+
+Les `.parquet` volumineux restent hors Git (ignorés), tandis que `dvc.yaml`, `dvc.lock`
+et les paramètres sont versionnés.
+
+## Model Registry (TP02)
+
+Le cycle de vie modèle est scripté avec aliases :
+
+- `register.py` : entraîne 2 stratégies, enregistre 2 versions, pose `champion` / `challenger`.
+- `promote.py` : applique une quality gate (`validated`, `passed_validation`, gain minimal),
+  trace acceptation/rejet, puis démontre promotion/rollback.
+- aliases multi-environnements : `prod-eu`, `prod-us`, `shadow`.
+
+Commandes :
+
+```bash
+mlflow run . -e register --env-manager local
+mlflow run . -e promote --env-manager local -P min_gain=0.02
 ```
 
 Visualiser le graphe des stages :
