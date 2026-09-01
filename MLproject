@@ -22,6 +22,20 @@ entry_points:
       data: {type: path, default: data/processed/test.parquet}
     command: "python3 predict_mlflow.py --model runs:/{run_id}/model --data {data}"
 
+  register:
+    parameters:
+      train: {type: path, default: data/processed/train.parquet}
+      validation: {type: path, default: data/processed/validation.parquet}
+      model_name: {type: str, default: electricity_forecaster}
+      first_strategy: {type: str, default: short_memory}
+      second_strategy: {type: str, default: mixed}
+    command: "python3 register.py --train {train} --validation {validation} --model-name {model_name} --first-strategy {first_strategy} --second-strategy {second_strategy}"
+
+  promote:
+    parameters:
+      model_name: {type: str, default: electricity_forecaster}
+    command: "python3 promote.py --model-name {model_name}"
+
   main:
     parameters:
       strategy: {type: str, default: mixed}
