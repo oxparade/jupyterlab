@@ -130,7 +130,10 @@ def main(
 
         for standardize in (False, True):
             for alpha in RIDGE_ALPHAS:
-                with mlflow.start_run(run_name=f"alpha={alpha}|standardize={str(standardize).lower()}", nested=True):
+                with mlflow.start_run(
+                    run_name=f"alpha={alpha}|standardize={str(standardize).lower()}",
+                    nested=True,
+                ):
                     if standardize:
                         model = Pipeline(
                             [
@@ -141,19 +144,19 @@ def main(
                         model.fit(X_train, y_train)
                     else:
                         model = train_ridge(X_train, y_train, alpha=alpha)
-                metrics = evaluate(model, X_validation, y_validation)
-                mlflow.log_param("alpha", float(alpha))
-                mlflow.log_param("standardize", str(standardize).lower())
-                mlflow.log_metric("validation_rmse", metrics["rmse"])
-                mlflow.log_metric("validation_mae", metrics["mae"])
+                    metrics = evaluate(model, X_validation, y_validation)
+                    mlflow.log_param("alpha", float(alpha))
+                    mlflow.log_param("standardize", str(standardize).lower())
+                    mlflow.log_metric("validation_rmse", metrics["rmse"])
+                    mlflow.log_metric("validation_mae", metrics["mae"])
 
-                coef_model = _extract_ridge_coefficients(model)
-                if coef_model is not None:
-                    figure = coefficient_weights(coef_model, features)
-                    mlflow.log_figure(
-                        figure,
-                        f"coefficient_weights_standardize_{str(standardize).lower()}_alpha_{alpha}.html",
-                    )
+                    coef_model = _extract_ridge_coefficients(model)
+                    if coef_model is not None:
+                        figure = coefficient_weights(coef_model, features)
+                        mlflow.log_figure(
+                            figure,
+                            f"coefficient_weights_standardize_{str(standardize).lower()}_alpha_{alpha}.html",
+                        )
 
                 if best_metrics is None or metrics["rmse"] < best_metrics["rmse"]:
                     best_alpha = float(alpha)
