@@ -26,7 +26,7 @@ stages:
       - data/splits/split_v2_2013_2014H1_2014H2
 
   prep_mlflow_data:
-    cmd: /opt/venvs/mlops/bin/python prep.py --strategy ${prep_mlflow_data.strategy} --split-strategy ${prep_mlflow_data.split_strategy}
+    cmd: /opt/venvs/mlops/bin/python prep.py --input data/LD2011_2014.txt --strategy ${prep_mlflow_data.strategy} --split-strategy ${prep_mlflow_data.split_strategy}
     params:
       - prep_mlflow_data.strategy
       - prep_mlflow_data.split_strategy

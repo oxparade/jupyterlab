@@ -39,6 +39,25 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
+      - name: Download dataset
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import io
+          import urllib.request
+          import zipfile
+
+          url = "https://archive.ics.uci.edu/static/public/321/electricityloaddiagrams20112014.zip"
+          output = Path("data/LD2011_2014.txt")
+          output.parent.mkdir(parents=True, exist_ok=True)
+          with urllib.request.urlopen(url) as response, zipfile.ZipFile(io.BytesIO(response.read())) as archive:
+              names = [name for name in archive.namelist() if name.endswith(".txt")]
+              if not names:
+                  raise SystemExit("No .txt file found in dataset archive")
+              output.write_bytes(archive.read(names[0]))
+          print(f"wrote {output}")
+          PY
+
       - name: Run retrain and validation pipeline
         env:
           MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
