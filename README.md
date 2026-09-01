@@ -1,5 +1,8 @@
 # ElectricityLoadDiagrams20112014 — MLOps Lab
 
+<img width="1686" height="901" alt="image" src="https://github.com/user-attachments/assets/dd993bef-4f82-4d3f-8709-3ee04789358e" />
+<img width="1700" height="740" alt="image" src="https://github.com/user-attachments/assets/0791c56d-8b33-4800-9d12-100ae5cb0a44" />
+
 Projet pédagogique autour du dataset **ElectricityLoadDiagrams20112014** :
 exploration de séries temporelles de consommation électrique, préparation des données,
 entraînement de modèles de régression, traçabilité MLflow et versionnement DVC.
