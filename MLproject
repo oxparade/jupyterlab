@@ -1,0 +1,31 @@
+name: electricity-forecaster
+
+python_env: python_env.yaml
+
+entry_points:
+  train:
+    parameters:
+      data: {type: path, default: data/processed/train.parquet}
+      validation: {type: path, default: data/processed/validation.parquet}
+    command: "python3 train_mlflow.py --data {data} --validation {validation}"
+
+  serve:
+    parameters:
+      run_id: {type: str}
+      host: {type: str, default: 127.0.0.1}
+      port: {type: int, default: 5001}
+    command: "mlflow models serve -m runs:/{run_id}/model -h {host} -p {port} --env-manager local"
+
+  predict:
+    parameters:
+      run_id: {type: str}
+      data: {type: path, default: data/processed/test.parquet}
+    command: "python3 predict_mlflow.py --model runs:/{run_id}/model --data {data}"
+
+  main:
+    parameters:
+      strategy: {type: str, default: mixed}
+      split_strategy: {type: str, default: full_history}
+      host: {type: str, default: 127.0.0.1}
+      port: {type: int, default: 5001}
+    command: "python3 main.py --strategy {strategy} --split-strategy {split_strategy} --host {host} --port {port}"

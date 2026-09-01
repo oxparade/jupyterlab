@@ -1,0 +1,3 @@
+prep_mlflow_data:
+  strategy: mixed
+  split_strategy: full_history

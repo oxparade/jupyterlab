@@ -74,3 +74,40 @@ stages:
       md5: ff7bea192700a3e2016c6391b6388b4d.dir
       size: 200844256
       nfiles: 4
+  prep_mlflow_data:
+    cmd: /opt/venvs/mlops/bin/python prep.py --strategy mixed --split-strategy 
+      full_history
+    deps:
+    - path: config.py
+      hash: md5
+      md5: 67ff269bbfe19f8935081c6ea4260477
+      size: 1860
+    - path: data/LD2011_2014.txt
+      hash: md5
+      md5: e317add771cebd2df4121e50570eaa25
+      size: 710998915
+    - path: pipeline_steps.py
+      hash: md5
+      md5: f2ff0d2fb3ffa12f0b36604ce0cbdcfe
+      size: 7324
+    - path: prep.py
+      hash: md5
+      md5: 925d5720a2b7be6475ac0167e1e635a2
+      size: 2432
+    params:
+      params.yaml:
+        prep_mlflow_data.split_strategy: full_history
+        prep_mlflow_data.strategy: mixed
+    outs:
+    - path: data/processed/test.parquet
+      hash: md5
+      md5: f6e3a6d96d7805d1b3ebae1dc4a31437
+      size: 177747492
+    - path: data/processed/train.parquet
+      hash: md5
+      md5: 36fbe115d18b362c09e2c19fdb9ca2f0
+      size: 285232031
+    - path: data/processed/validation.parquet
+      hash: md5
+      md5: b8e73aef37ed902332482ccd8634120c
+      size: 175092519
