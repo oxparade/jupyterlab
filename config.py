@@ -14,6 +14,18 @@ EXPERIMENT: str = "electricity_consumption_forecasting"
 TARGET: str = "consumption"
 
 
+def _shared_dataset() -> Path:
+    """Locate shared/dataset/ by walking up from this file."""
+    for parent in Path(__file__).resolve().parents:
+        candidate = parent / "shared" / "dataset" / "LD2011_2014_kwh.parquet"
+        if candidate.exists():
+            return candidate
+    return Path("shared/dataset/LD2011_2014_kwh.parquet")
+
+
+DATASET_FILE: Path = _shared_dataset()
+
+
 class ModellingStrategy(StrEnum):
     SHORT_MEMORY = "short_memory"
     SEASONALITY = "seasonality"

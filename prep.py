@@ -8,7 +8,15 @@ from pathlib import Path
 
 import pandas as pd
 
-from config import DATA_DIR, DATASET_SPLIT_DATES, MODELLING_FEATURES, TARGET, ModellingStrategy, SplitStrategy
+from config import (
+    DATA_DIR,
+    DATASET_FILE,
+    DATASET_SPLIT_DATES,
+    MODELLING_FEATURES,
+    TARGET,
+    ModellingStrategy,
+    SplitStrategy,
+)
 from pipeline_steps import build_features, load_data
 
 logging.basicConfig(
@@ -18,13 +26,22 @@ logger = logging.getLogger(__name__)
 
 
 def main(
-    input: Path = DATA_DIR / "LD2011_2014.txt",
+    input: Path = DATASET_FILE,
     output: Path = DATA_DIR / "processed",
     strategy: ModellingStrategy = ModellingStrategy.MIXED,
     split_strategy: SplitStrategy = SplitStrategy.FULL_HISTORY,
 ) -> None:
     """Prépare et persiste les trois jeux train/validation/test."""
-    raw = load_data(str(input))
+    input = Path(input)
+    if input.suffix == ".parquet":
+        raw = pd.read_parquet(input)
+        if "timestamp" in raw.columns:
+            raw = raw.set_index("timestamp")
+        if not isinstance(raw.index, pd.DatetimeIndex):
+            raw.index = pd.to_datetime(raw.index)
+    else:
+        raw = load_data(str(input))
+
     stacked = build_features(raw)
 
     features = MODELLING_FEATURES[strategy]
@@ -44,7 +61,7 @@ def main(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Préparation des datasets train/validation/test")
-    parser.add_argument("--input", type=Path, default=DATA_DIR / "LD2011_2014.txt")
+    parser.add_argument("--input", type=Path, default=DATASET_FILE)
     parser.add_argument("--output", type=Path, default=DATA_DIR / "processed")
     parser.add_argument(
         "--strategy",
