@@ -48,7 +48,11 @@ def main(
     regressor = mlflow.sklearn.load_model(model)
 
     test_data = pd.read_parquet(data)
-    features = [column for column in test_data.columns if column != TARGET]
+    features = [
+        column
+        for column in test_data.columns
+        if column != TARGET and pd.api.types.is_numeric_dtype(test_data[column])
+    ]
     X_test = test_data[features]
     y_test = test_data[TARGET]
 
