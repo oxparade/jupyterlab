@@ -115,6 +115,7 @@ def register_candidates(
     source_dir: str,
     train_path: Input[Dataset],
     validation_path: Input[Dataset],
+    training_summary_path: Input[Dataset],
     model_name: str,
     first_strategy: str,
     second_strategy: str,
@@ -162,8 +163,59 @@ def register_candidates(
         "second_strategy": second_strategy,
         "train_path": train_path.path,
         "validation_path": validation_path.path,
+        "training_summary_path": training_summary_path.path,
     }
     Path(registry_summary_path.path).write_text(
+        json.dumps(summary, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+
+@dsl.component(base_image=COMPONENT_IMAGE)
+def train_model(
+    source_dir: str,
+    train_path: Input[Dataset],
+    validation_path: Input[Dataset],
+    strategy: str,
+    mlflow_tracking_uri: str,
+    training_summary_path: Output[Dataset],
+) -> None:
+    """Run train_mlflow.py as a dedicated training node in the DAG."""
+
+    import json
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    def run_script(script_name: str, args: list[str]) -> None:
+        script_path = Path(source_dir) / script_name
+        if not script_path.exists():
+            raise FileNotFoundError(f"Script not found: {script_path}")
+        env = os.environ.copy()
+        if mlflow_tracking_uri:
+            env["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
+            if mlflow_tracking_uri.startswith("https://"):
+                env["MLFLOW_TRACKING_INSECURE_TLS"] = "true"
+        subprocess.run([sys.executable, str(script_path), *args], check=True, env=env)
+
+    run_script(
+        script_name="train_mlflow.py",
+        args=[
+            "--data",
+            train_path.path,
+            "--validation",
+            validation_path.path,
+        ],
+    )
+
+    summary = {
+        "strategy": strategy,
+        "train_path": train_path.path,
+        "validation_path": validation_path.path,
+        "note": "Detailed training metrics and model artifacts are logged by train_mlflow.py",
+    }
+    Path(training_summary_path.path).write_text(
         json.dumps(summary, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
@@ -307,10 +359,19 @@ def electricity_forecaster_pipeline(
         mlflow_tracking_uri=mlflow_tracking_uri,
     )
 
+    trained = train_model(
+        source_dir=source_dir,
+        train_path=data.outputs["train_path"],
+        validation_path=data.outputs["validation_path"],
+        strategy=strategy,
+        mlflow_tracking_uri=mlflow_tracking_uri,
+    )
+
     registered = register_candidates(
         source_dir=source_dir,
         train_path=data.outputs["train_path"],
         validation_path=data.outputs["validation_path"],
+        training_summary_path=trained.outputs["training_summary_path"],
         model_name=model_name,
         first_strategy=first_strategy,
         second_strategy=second_strategy,
