@@ -21,6 +21,10 @@ components:
           artifactType:
             schemaTitle: system.Dataset
             schemaVersion: 0.0.1
+        registry_summary_path:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
         test_path:
           artifactType:
             schemaTitle: system.Dataset
@@ -41,6 +45,11 @@ components:
   comp-govern-champion:
     executorLabel: exec-govern-champion
     inputDefinitions:
+      artifacts:
+        evaluation_summary_path:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
       parameters:
         dry_run:
           parameterType: STRING
@@ -145,25 +154,27 @@ deploymentSpec:
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef evaluate_champion(\n    source_dir: str,\n    model_name: str,\n\
           \    test_path: Input[Dataset],\n    reference_path: Input[Dataset],\n \
-          \   mlflow_tracking_uri: str,\n    evaluation_summary_path: Output[Dataset],\n\
-          ) -> None:\n    \"\"\"Evaluate the promoted champion through predict_mlflow.py.\"\
-          \"\"\n\n    import json\n    import os\n    import subprocess\n    import\
-          \ sys\n    from pathlib import Path\n\n    def run_script(script_name: str,\
-          \ args: list[str]) -> None:\n        script_path = Path(source_dir) / script_name\n\
-          \        if not script_path.exists():\n            raise FileNotFoundError(f\"\
-          Script not found: {script_path}\")\n        env = os.environ.copy()\n  \
-          \      if mlflow_tracking_uri:\n            env[\"MLFLOW_TRACKING_URI\"\
-          ] = mlflow_tracking_uri\n        subprocess.run([sys.executable, str(script_path),\
-          \ *args], check=True, env=env)\n\n    model_uri = f\"models:/{model_name}@champion\"\
-          \n    run_script(\n        script_name=\"predict_mlflow.py\",\n        args=[\n\
-          \            \"--model\",\n            model_uri,\n            \"--data\"\
-          ,\n            test_path.path,\n            \"--reference-data\",\n    \
-          \        reference_path.path,\n        ],\n    )\n\n    summary = {\n  \
-          \      \"model_uri\": model_uri,\n        \"test_path\": test_path.path,\n\
-          \        \"reference_path\": reference_path.path,\n        \"note\": \"\
-          Detailed metrics are logged in MLflow by predict_mlflow.py\",\n    }\n \
-          \   Path(evaluation_summary_path.path).write_text(\n        json.dumps(summary,\
-          \ indent=2, ensure_ascii=False),\n        encoding=\"utf-8\",\n    )\n\n"
+          \   registry_summary_path: Input[Dataset],\n    mlflow_tracking_uri: str,\n\
+          \    evaluation_summary_path: Output[Dataset],\n) -> None:\n    \"\"\"Evaluate\
+          \ the promoted champion through predict_mlflow.py.\"\"\"\n\n    import json\n\
+          \    import os\n    import subprocess\n    import sys\n    from pathlib\
+          \ import Path\n\n    def run_script(script_name: str, args: list[str]) ->\
+          \ None:\n        script_path = Path(source_dir) / script_name\n        if\
+          \ not script_path.exists():\n            raise FileNotFoundError(f\"Script\
+          \ not found: {script_path}\")\n        env = os.environ.copy()\n       \
+          \ if mlflow_tracking_uri:\n            env[\"MLFLOW_TRACKING_URI\"] = mlflow_tracking_uri\n\
+          \        subprocess.run([sys.executable, str(script_path), *args], check=True,\
+          \ env=env)\n\n    model_uri = f\"models:/{model_name}@champion\"\n    run_script(\n\
+          \        script_name=\"predict_mlflow.py\",\n        args=[\n          \
+          \  \"--model\",\n            model_uri,\n            \"--data\",\n     \
+          \       test_path.path,\n            \"--reference-data\",\n           \
+          \ reference_path.path,\n        ],\n    )\n\n    summary = {\n        \"\
+          model_uri\": model_uri,\n        \"test_path\": test_path.path,\n      \
+          \  \"reference_path\": reference_path.path,\n        \"registry_summary_path\"\
+          : registry_summary_path.path,\n        \"note\": \"Detailed metrics are\
+          \ logged in MLflow by predict_mlflow.py\",\n    }\n    Path(evaluation_summary_path.path).write_text(\n\
+          \        json.dumps(summary, indent=2, ensure_ascii=False),\n        encoding=\"\
+          utf-8\",\n    )\n\n"
         image: python:3.14-slim
     exec-govern-champion:
       container:
@@ -192,23 +203,24 @@ deploymentSpec:
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
           \ *\n\ndef govern_champion(\n    source_dir: str,\n    model_name: str,\n\
-          \    min_gain: float,\n    dry_run: str,\n    mlflow_tracking_uri: str,\n\
-          \    governance_summary_path: Output[Dataset],\n) -> None:\n    \"\"\"Run\
-          \ governance decision and persist a simple decision artifact.\"\"\"\n\n\
-          \    import json\n    import os\n    import subprocess\n    import sys\n\
-          \    from pathlib import Path\n\n    def run_script(script_name: str, args:\
-          \ list[str]) -> None:\n        script_path = Path(source_dir) / script_name\n\
-          \        if not script_path.exists():\n            raise FileNotFoundError(f\"\
-          Script not found: {script_path}\")\n        env = os.environ.copy()\n  \
-          \      if mlflow_tracking_uri:\n            env[\"MLFLOW_TRACKING_URI\"\
-          ] = mlflow_tracking_uri\n        subprocess.run([sys.executable, str(script_path),\
-          \ *args], check=True, env=env)\n\n    run_script(\n        script_name=\"\
-          govern.py\",\n        args=[\n            \"--model-name\",\n          \
-          \  model_name,\n            \"--min-gain\",\n            str(min_gain),\n\
+          \    min_gain: float,\n    dry_run: str,\n    evaluation_summary_path: Input[Dataset],\n\
+          \    mlflow_tracking_uri: str,\n    governance_summary_path: Output[Dataset],\n\
+          ) -> None:\n    \"\"\"Run governance decision and persist a simple decision\
+          \ artifact.\"\"\"\n\n    import json\n    import os\n    import subprocess\n\
+          \    import sys\n    from pathlib import Path\n\n    def run_script(script_name:\
+          \ str, args: list[str]) -> None:\n        script_path = Path(source_dir)\
+          \ / script_name\n        if not script_path.exists():\n            raise\
+          \ FileNotFoundError(f\"Script not found: {script_path}\")\n        env =\
+          \ os.environ.copy()\n        if mlflow_tracking_uri:\n            env[\"\
+          MLFLOW_TRACKING_URI\"] = mlflow_tracking_uri\n        subprocess.run([sys.executable,\
+          \ str(script_path), *args], check=True, env=env)\n\n    run_script(\n  \
+          \      script_name=\"govern.py\",\n        args=[\n            \"--model-name\"\
+          ,\n            model_name,\n            \"--min-gain\",\n            str(min_gain),\n\
           \            \"--dry-run\",\n            dry_run,\n        ],\n    )\n\n\
           \    summary = {\n        \"model_name\": model_name,\n        \"min_gain\"\
-          : min_gain,\n        \"dry_run\": dry_run,\n        \"decision\": \"logged\
-          \ in MLflow registry tags by govern.py\",\n    }\n    Path(governance_summary_path.path).write_text(\n\
+          : min_gain,\n        \"dry_run\": dry_run,\n        \"evaluation_summary_path\"\
+          : evaluation_summary_path.path,\n        \"decision\": \"logged in MLflow\
+          \ registry tags by govern.py\",\n    }\n    Path(governance_summary_path.path).write_text(\n\
           \        json.dumps(summary, indent=2, ensure_ascii=False),\n        encoding=\"\
           utf-8\",\n    )\n\n"
         image: python:3.14-slim
@@ -326,7 +338,6 @@ root:
         componentRef:
           name: comp-evaluate-champion
         dependentTasks:
-        - govern-champion
         - prepare-data
         - register-candidates
         inputs:
@@ -335,6 +346,10 @@ root:
               taskOutputArtifact:
                 outputArtifactKey: train_path
                 producerTask: prepare-data
+            registry_summary_path:
+              taskOutputArtifact:
+                outputArtifactKey: registry_summary_path
+                producerTask: register-candidates
             test_path:
               taskOutputArtifact:
                 outputArtifactKey: test_path
@@ -353,7 +368,14 @@ root:
           enableCache: true
         componentRef:
           name: comp-govern-champion
+        dependentTasks:
+        - evaluate-champion
         inputs:
+          artifacts:
+            evaluation_summary_path:
+              taskOutputArtifact:
+                outputArtifactKey: evaluation_summary_path
+                producerTask: evaluate-champion
           parameters:
             dry_run:
               componentInputParameter: governance_dry_run

@@ -169,6 +169,7 @@ def govern_champion(
     model_name: str,
     min_gain: float,
     dry_run: str,
+    evaluation_summary_path: Input[Dataset],
     mlflow_tracking_uri: str,
     governance_summary_path: Output[Dataset],
 ) -> None:
@@ -205,6 +206,7 @@ def govern_champion(
         "model_name": model_name,
         "min_gain": min_gain,
         "dry_run": dry_run,
+        "evaluation_summary_path": evaluation_summary_path.path,
         "decision": "logged in MLflow registry tags by govern.py",
     }
     Path(governance_summary_path.path).write_text(
@@ -219,6 +221,7 @@ def evaluate_champion(
     model_name: str,
     test_path: Input[Dataset],
     reference_path: Input[Dataset],
+    registry_summary_path: Input[Dataset],
     mlflow_tracking_uri: str,
     evaluation_summary_path: Output[Dataset],
 ) -> None:
@@ -256,6 +259,7 @@ def evaluate_champion(
         "model_uri": model_uri,
         "test_path": test_path.path,
         "reference_path": reference_path.path,
+        "registry_summary_path": registry_summary_path.path,
         "note": "Detailed metrics are logged in MLflow by predict_mlflow.py",
     }
     Path(evaluation_summary_path.path).write_text(
@@ -297,21 +301,23 @@ def electricity_forecaster_pipeline(
         mlflow_tracking_uri=mlflow_tracking_uri,
     )
 
-    governed = govern_champion(
-        source_dir=source_dir,
-        model_name=model_name,
-        min_gain=min_gain,
-        dry_run=governance_dry_run,
-        mlflow_tracking_uri=mlflow_tracking_uri,
-    )
-
-    evaluate_champion(
+    evaluation = evaluate_champion(
         source_dir=source_dir,
         model_name=model_name,
         test_path=data.outputs["test_path"],
         reference_path=data.outputs["train_path"],
+        registry_summary_path=registered.outputs["registry_summary_path"],
         mlflow_tracking_uri=mlflow_tracking_uri,
-    ).after(governed).after(registered)
+    )
+
+    govern_champion(
+        source_dir=source_dir,
+        model_name=model_name,
+        min_gain=min_gain,
+        dry_run=governance_dry_run,
+        evaluation_summary_path=evaluation.outputs["evaluation_summary_path"],
+        mlflow_tracking_uri=mlflow_tracking_uri,
+    )
 
 
 def compile_pipeline(output_path: Path) -> None:
