@@ -464,6 +464,36 @@ Les pistes ci-dessous ont finalement été implémentées dans le projet :
 - enregistrement du meilleur modèle dans un Model Registry ;
 - pipeline automatisé de retraining et validation.
 
+## Kubeflow sur la VM
+
+Le dépôt contient maintenant un squelette Kubeflow v2 dans [kubeflow_pipeline.py](kubeflow_pipeline.py).
+
+Ce pipeline enchaîne les scripts existants sans réécrire toute la logique métier :
+
+- préparation des splits via `prep.py` ;
+- enregistrement des candidats via `register.py` ;
+- promotion via `promote.py` ;
+- évaluation du champion via `predict_mlflow.py`.
+
+Hypothèse de déploiement : sur la VM, il existe déjà un container Kubeflow / un runtime partagé.
+Dans ce cas, on réutilise ce runtime existant puis on monte le dépôt et les artefacts.
+Le dépôt ne conserve donc pas d’image Docker custom dédiée à Kubeflow.
+
+Compilation du pipeline :
+
+```bash
+python kubeflow_pipeline.py --output kubeflow_pipeline.yaml
+```
+
+Variables utiles lors du déploiement :
+
+- `KUBEFLOW_COMPONENT_IMAGE` : image Kubeflow à utiliser pour les composants ;
+- `KUBEFLOW_SOURCE_DIR` : chemin du dépôt monté dans le conteneur ;
+- `KUBEFLOW_RAW_DATASET` : chemin du parquet source dans l’environnement Kubeflow.
+
+En pratique, le prochain ajustement utile sera de brancher ce squelette sur le stockage réellement exposé par la VM
+(PVC ou bucket objet) pour éviter les chemins locaux implicites.
+
 Concrètement :
 
 - comparaison Ridge standardisé / non standardisé dans `train_mlflow.py` ;
