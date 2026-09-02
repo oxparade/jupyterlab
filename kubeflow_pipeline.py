@@ -35,6 +35,8 @@ def _build_env(mlflow_tracking_uri: str) -> dict[str, str]:
     env = os.environ.copy()
     if mlflow_tracking_uri:
         env["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
+        if mlflow_tracking_uri.startswith("https://"):
+            env["MLFLOW_TRACKING_INSECURE_TLS"] = "true"
     return env
 
 
@@ -76,6 +78,8 @@ def prepare_data(
         env = os.environ.copy()
         if mlflow_tracking_uri:
             env["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
+            if mlflow_tracking_uri.startswith("https://"):
+                env["MLFLOW_TRACKING_INSECURE_TLS"] = "true"
         subprocess.run([sys.executable, str(script_path), *args], check=True, env=env)
 
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -132,6 +136,8 @@ def register_candidates(
         env = os.environ.copy()
         if mlflow_tracking_uri:
             env["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
+            if mlflow_tracking_uri.startswith("https://"):
+                env["MLFLOW_TRACKING_INSECURE_TLS"] = "true"
         subprocess.run([sys.executable, str(script_path), *args], check=True, env=env)
 
     run_script(
@@ -188,6 +194,8 @@ def govern_champion(
         env = os.environ.copy()
         if mlflow_tracking_uri:
             env["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
+            if mlflow_tracking_uri.startswith("https://"):
+                env["MLFLOW_TRACKING_INSECURE_TLS"] = "true"
         subprocess.run([sys.executable, str(script_path), *args], check=True, env=env)
 
     run_script(
@@ -240,6 +248,8 @@ def evaluate_champion(
         env = os.environ.copy()
         if mlflow_tracking_uri:
             env["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
+            if mlflow_tracking_uri.startswith("https://"):
+                env["MLFLOW_TRACKING_INSECURE_TLS"] = "true"
         subprocess.run([sys.executable, str(script_path), *args], check=True, env=env)
 
     model_uri = f"models:/{model_name}@champion"

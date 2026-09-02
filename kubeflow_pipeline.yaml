@@ -178,18 +178,19 @@ deploymentSpec:
           \ not script_path.exists():\n            raise FileNotFoundError(f\"Script\
           \ not found: {script_path}\")\n        env = os.environ.copy()\n       \
           \ if mlflow_tracking_uri:\n            env[\"MLFLOW_TRACKING_URI\"] = mlflow_tracking_uri\n\
-          \        subprocess.run([sys.executable, str(script_path), *args], check=True,\
-          \ env=env)\n\n    model_uri = f\"models:/{model_name}@champion\"\n    run_script(\n\
-          \        script_name=\"predict_mlflow.py\",\n        args=[\n          \
-          \  \"--model\",\n            model_uri,\n            \"--data\",\n     \
-          \       test_path.path,\n            \"--reference-data\",\n           \
-          \ reference_path.path,\n        ],\n    )\n\n    summary = {\n        \"\
-          model_uri\": model_uri,\n        \"test_path\": test_path.path,\n      \
-          \  \"reference_path\": reference_path.path,\n        \"registry_summary_path\"\
-          : registry_summary_path.path,\n        \"note\": \"Detailed metrics are\
-          \ logged in MLflow by predict_mlflow.py\",\n    }\n    Path(evaluation_summary_path.path).write_text(\n\
-          \        json.dumps(summary, indent=2, ensure_ascii=False),\n        encoding=\"\
-          utf-8\",\n    )\n\n"
+          \            if mlflow_tracking_uri.startswith(\"https://\"):\n        \
+          \        env[\"MLFLOW_TRACKING_INSECURE_TLS\"] = \"true\"\n        subprocess.run([sys.executable,\
+          \ str(script_path), *args], check=True, env=env)\n\n    model_uri = f\"\
+          models:/{model_name}@champion\"\n    run_script(\n        script_name=\"\
+          predict_mlflow.py\",\n        args=[\n            \"--model\",\n       \
+          \     model_uri,\n            \"--data\",\n            test_path.path,\n\
+          \            \"--reference-data\",\n            reference_path.path,\n \
+          \       ],\n    )\n\n    summary = {\n        \"model_uri\": model_uri,\n\
+          \        \"test_path\": test_path.path,\n        \"reference_path\": reference_path.path,\n\
+          \        \"registry_summary_path\": registry_summary_path.path,\n      \
+          \  \"note\": \"Detailed metrics are logged in MLflow by predict_mlflow.py\"\
+          ,\n    }\n    Path(evaluation_summary_path.path).write_text(\n        json.dumps(summary,\
+          \ indent=2, ensure_ascii=False),\n        encoding=\"utf-8\",\n    )\n\n"
         image: jupyterlab-kfp:0.1.0
     exec-govern-champion:
       container:
@@ -227,17 +228,18 @@ deploymentSpec:
           \ / script_name\n        if not script_path.exists():\n            raise\
           \ FileNotFoundError(f\"Script not found: {script_path}\")\n        env =\
           \ os.environ.copy()\n        if mlflow_tracking_uri:\n            env[\"\
-          MLFLOW_TRACKING_URI\"] = mlflow_tracking_uri\n        subprocess.run([sys.executable,\
-          \ str(script_path), *args], check=True, env=env)\n\n    run_script(\n  \
-          \      script_name=\"govern.py\",\n        args=[\n            \"--model-name\"\
-          ,\n            model_name,\n            \"--min-gain\",\n            str(min_gain),\n\
-          \            \"--dry-run\",\n            dry_run,\n        ],\n    )\n\n\
-          \    summary = {\n        \"model_name\": model_name,\n        \"min_gain\"\
-          : min_gain,\n        \"dry_run\": dry_run,\n        \"evaluation_summary_path\"\
-          : evaluation_summary_path.path,\n        \"decision\": \"logged in MLflow\
-          \ registry tags by govern.py\",\n    }\n    Path(governance_summary_path.path).write_text(\n\
-          \        json.dumps(summary, indent=2, ensure_ascii=False),\n        encoding=\"\
-          utf-8\",\n    )\n\n"
+          MLFLOW_TRACKING_URI\"] = mlflow_tracking_uri\n            if mlflow_tracking_uri.startswith(\"\
+          https://\"):\n                env[\"MLFLOW_TRACKING_INSECURE_TLS\"] = \"\
+          true\"\n        subprocess.run([sys.executable, str(script_path), *args],\
+          \ check=True, env=env)\n\n    run_script(\n        script_name=\"govern.py\"\
+          ,\n        args=[\n            \"--model-name\",\n            model_name,\n\
+          \            \"--min-gain\",\n            str(min_gain),\n            \"\
+          --dry-run\",\n            dry_run,\n        ],\n    )\n\n    summary = {\n\
+          \        \"model_name\": model_name,\n        \"min_gain\": min_gain,\n\
+          \        \"dry_run\": dry_run,\n        \"evaluation_summary_path\": evaluation_summary_path.path,\n\
+          \        \"decision\": \"logged in MLflow registry tags by govern.py\",\n\
+          \    }\n    Path(governance_summary_path.path).write_text(\n        json.dumps(summary,\
+          \ indent=2, ensure_ascii=False),\n        encoding=\"utf-8\",\n    )\n\n"
         image: jupyterlab-kfp:0.1.0
     exec-importer:
       importer:
@@ -283,10 +285,12 @@ deploymentSpec:
           \        if not script_path.exists():\n            raise FileNotFoundError(f\"\
           Script not found: {script_path}\")\n        env = os.environ.copy()\n  \
           \      if mlflow_tracking_uri:\n            env[\"MLFLOW_TRACKING_URI\"\
-          ] = mlflow_tracking_uri\n        subprocess.run([sys.executable, str(script_path),\
-          \ *args], check=True, env=env)\n\n    with tempfile.TemporaryDirectory()\
-          \ as temp_dir:\n        run_script(\n            script_name=\"prep.py\"\
-          ,\n            args=[\n                \"--input\",\n                raw_dataset.path,\n\
+          ] = mlflow_tracking_uri\n            if mlflow_tracking_uri.startswith(\"\
+          https://\"):\n                env[\"MLFLOW_TRACKING_INSECURE_TLS\"] = \"\
+          true\"\n        subprocess.run([sys.executable, str(script_path), *args],\
+          \ check=True, env=env)\n\n    with tempfile.TemporaryDirectory() as temp_dir:\n\
+          \        run_script(\n            script_name=\"prep.py\",\n           \
+          \ args=[\n                \"--input\",\n                raw_dataset.path,\n\
           \                \"--output\",\n                temp_dir,\n            \
           \    \"--strategy\",\n                strategy,\n                \"--split-strategy\"\
           ,\n                split_strategy,\n            ],\n        )\n\n      \
@@ -334,7 +338,9 @@ deploymentSpec:
           \   script_path = Path(source_dir) / script_name\n        if not script_path.exists():\n\
           \            raise FileNotFoundError(f\"Script not found: {script_path}\"\
           )\n        env = os.environ.copy()\n        if mlflow_tracking_uri:\n  \
-          \          env[\"MLFLOW_TRACKING_URI\"] = mlflow_tracking_uri\n        subprocess.run([sys.executable,\
+          \          env[\"MLFLOW_TRACKING_URI\"] = mlflow_tracking_uri\n        \
+          \    if mlflow_tracking_uri.startswith(\"https://\"):\n                env[\"\
+          MLFLOW_TRACKING_INSECURE_TLS\"] = \"true\"\n        subprocess.run([sys.executable,\
           \ str(script_path), *args], check=True, env=env)\n\n    run_script(\n  \
           \      script_name=\"register.py\",\n        args=[\n            \"--train\"\
           ,\n            train_path.path,\n            \"--validation\",\n       \

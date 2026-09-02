@@ -39,13 +39,14 @@ def _maybe_compile(pipeline_package: Path) -> None:
 
 
 def _build_arguments(args: argparse.Namespace) -> dict[str, object]:
+    second_strategy = args.second_strategy or args.strategy
     return {
         "source_dir": args.source_dir,
         "raw_dataset_uri": args.raw_dataset_uri,
         "mlflow_tracking_uri": args.mlflow_tracking_uri,
         "model_name": args.model_name,
         "first_strategy": args.first_strategy,
-        "second_strategy": args.second_strategy,
+        "second_strategy": second_strategy,
         "strategy": args.strategy,
         "split_strategy": args.split_strategy,
         "min_gain": args.min_gain,
@@ -79,7 +80,11 @@ def main() -> None:
     parser.add_argument("--mlflow-tracking-uri", default=os.environ.get("MLFLOW_TRACKING_URI", ""))
     parser.add_argument("--model-name", default="electricity_forecaster")
     parser.add_argument("--first-strategy", default="short_memory")
-    parser.add_argument("--second-strategy", default="mixed")
+    parser.add_argument(
+        "--second-strategy",
+        default=None,
+        help="Optional second candidate strategy. Defaults to --strategy when omitted.",
+    )
     parser.add_argument("--strategy", default="mixed")
     parser.add_argument("--split-strategy", default="full_history")
     parser.add_argument("--min-gain", type=float, default=0.02)
