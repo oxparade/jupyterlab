@@ -1,0 +1,20 @@
+FROM python:3.14-slim
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    PIP_DISABLE_PIP_VERSION_CHECK=1 \
+    KUBEFLOW_SOURCE_DIR=/workspace/jupyterlab
+
+WORKDIR /workspace/jupyterlab
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends build-essential git \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY requirements-kubeflow.txt ./requirements-kubeflow.txt
+RUN python -m pip install --upgrade pip setuptools wheel \
+    && python -m pip install -r requirements-kubeflow.txt
+
+COPY . .
+
+CMD ["python", "kubeflow_pipeline.py", "--output", "/tmp/kubeflow_pipeline.yaml"]

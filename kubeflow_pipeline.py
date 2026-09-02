@@ -23,11 +23,11 @@ from pathlib import Path
 from kfp import compiler, dsl
 from kfp.dsl import Dataset, Input, Output
 
-COMPONENT_IMAGE = os.environ.get("KUBEFLOW_COMPONENT_IMAGE", "python:3.14-slim")
+COMPONENT_IMAGE = os.environ.get("KUBEFLOW_COMPONENT_IMAGE", "jupyterlab-kfp:0.1.0")
 DEFAULT_SOURCE_DIR = os.environ.get("KUBEFLOW_SOURCE_DIR", "/workspace/jupyterlab")
 DEFAULT_RAW_DATASET = os.environ.get(
     "KUBEFLOW_RAW_DATASET",
-    "shared/dataset/LD2011_2014_kwh.parquet",
+    "s3://models/datasets/LD2011_2014_kwh.parquet",
 )
 
 
@@ -52,7 +52,7 @@ def _run_script(source_dir: str, script_name: str, args: list[str], mlflow_track
 @dsl.component(base_image=COMPONENT_IMAGE)
 def prepare_data(
     source_dir: str,
-    raw_dataset_path: str,
+    raw_dataset: Input[Dataset],
     strategy: str,
     split_strategy: str,
     mlflow_tracking_uri: str,
@@ -83,7 +83,7 @@ def prepare_data(
             script_name="prep.py",
             args=[
                 "--input",
-                raw_dataset_path,
+                raw_dataset.path,
                 "--output",
                 temp_dir,
                 "--strategy",
@@ -271,7 +271,7 @@ def evaluate_champion(
 @dsl.pipeline(name="electricity-forecaster-kubeflow")
 def electricity_forecaster_pipeline(
     source_dir: str = DEFAULT_SOURCE_DIR,
-    raw_dataset_path: str = DEFAULT_RAW_DATASET,
+    raw_dataset_uri: str = DEFAULT_RAW_DATASET,
     mlflow_tracking_uri: str = "",
     model_name: str = "electricity_forecaster",
     first_strategy: str = "short_memory",
@@ -283,9 +283,15 @@ def electricity_forecaster_pipeline(
 ) -> None:
     """Kubeflow-native orchestration for the current MLflow/DVC project."""
 
+    source = dsl.importer(
+        artifact_uri=raw_dataset_uri,
+        artifact_class=Dataset,
+        reimport=False,
+    )
+
     data = prepare_data(
         source_dir=source_dir,
-        raw_dataset_path=raw_dataset_path,
+        raw_dataset=source.output,
         strategy=strategy,
         split_strategy=split_strategy,
         mlflow_tracking_uri=mlflow_tracking_uri,

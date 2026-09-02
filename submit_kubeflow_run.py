@@ -41,7 +41,7 @@ def _maybe_compile(pipeline_package: Path) -> None:
 def _build_arguments(args: argparse.Namespace) -> dict[str, object]:
     return {
         "source_dir": args.source_dir,
-        "raw_dataset_path": args.raw_dataset_path,
+        "raw_dataset_uri": args.raw_dataset_uri,
         "mlflow_tracking_uri": args.mlflow_tracking_uri,
         "model_name": args.model_name,
         "first_strategy": args.first_strategy,
@@ -73,8 +73,8 @@ def main() -> None:
 
     parser.add_argument("--source-dir", default=os.environ.get("KUBEFLOW_SOURCE_DIR", "/workspace/jupyterlab"))
     parser.add_argument(
-        "--raw-dataset-path",
-        default=os.environ.get("KUBEFLOW_RAW_DATASET", "shared/dataset/LD2011_2014_kwh.parquet"),
+        "--raw-dataset-uri",
+        default=os.environ.get("KUBEFLOW_RAW_DATASET", "s3://models/datasets/LD2011_2014_kwh.parquet"),
     )
     parser.add_argument("--mlflow-tracking-uri", default=os.environ.get("MLFLOW_TRACKING_URI", ""))
     parser.add_argument("--model-name", default="electricity_forecaster")

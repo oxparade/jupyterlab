@@ -7,7 +7,7 @@
 #    min_gain: float [Default: 0.02]
 #    mlflow_tracking_uri: str [Default: '']
 #    model_name: str [Default: 'electricity_forecaster']
-#    raw_dataset_path: str [Default: 'shared/dataset/LD2011_2014_kwh.parquet']
+#    raw_dataset_uri: str [Default: 's3://models/datasets/LD2011_2014_kwh.parquet']
 #    second_strategy: str [Default: 'mixed']
 #    source_dir: str [Default: '/workspace/jupyterlab']
 #    split_strategy: str [Default: 'full_history']
@@ -67,13 +67,28 @@ components:
           artifactType:
             schemaTitle: system.Dataset
             schemaVersion: 0.0.1
+  comp-importer:
+    executorLabel: exec-importer
+    inputDefinitions:
+      parameters:
+        uri:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        artifact:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
   comp-prepare-data:
     executorLabel: exec-prepare-data
     inputDefinitions:
+      artifacts:
+        raw_dataset:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
       parameters:
         mlflow_tracking_uri:
-          parameterType: STRING
-        raw_dataset_path:
           parameterType: STRING
         source_dir:
           parameterType: STRING
@@ -175,7 +190,7 @@ deploymentSpec:
           \ logged in MLflow by predict_mlflow.py\",\n    }\n    Path(evaluation_summary_path.path).write_text(\n\
           \        json.dumps(summary, indent=2, ensure_ascii=False),\n        encoding=\"\
           utf-8\",\n    )\n\n"
-        image: python:3.14-slim
+        image: jupyterlab-kfp:0.1.0
     exec-govern-champion:
       container:
         args:
@@ -223,7 +238,14 @@ deploymentSpec:
           \ registry tags by govern.py\",\n    }\n    Path(governance_summary_path.path).write_text(\n\
           \        json.dumps(summary, indent=2, ensure_ascii=False),\n        encoding=\"\
           utf-8\",\n    )\n\n"
-        image: python:3.14-slim
+        image: jupyterlab-kfp:0.1.0
+    exec-importer:
+      importer:
+        artifactUri:
+          runtimeParameter: uri
+        typeSchema:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
     exec-prepare-data:
       container:
         args:
@@ -250,7 +272,7 @@ deploymentSpec:
 
           '
         - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
-          \ *\n\ndef prepare_data(\n    source_dir: str,\n    raw_dataset_path: str,\n\
+          \ *\n\ndef prepare_data(\n    source_dir: str,\n    raw_dataset: Input[Dataset],\n\
           \    strategy: str,\n    split_strategy: str,\n    mlflow_tracking_uri:\
           \ str,\n    train_path: Output[Dataset],\n    validation_path: Output[Dataset],\n\
           \    test_path: Output[Dataset],\n) -> None:\n    \"\"\"Run prep.py and\
@@ -264,7 +286,7 @@ deploymentSpec:
           ] = mlflow_tracking_uri\n        subprocess.run([sys.executable, str(script_path),\
           \ *args], check=True, env=env)\n\n    with tempfile.TemporaryDirectory()\
           \ as temp_dir:\n        run_script(\n            script_name=\"prep.py\"\
-          ,\n            args=[\n                \"--input\",\n                raw_dataset_path,\n\
+          ,\n            args=[\n                \"--input\",\n                raw_dataset.path,\n\
           \                \"--output\",\n                temp_dir,\n            \
           \    \"--strategy\",\n                strategy,\n                \"--split-strategy\"\
           ,\n                split_strategy,\n            ],\n        )\n\n      \
@@ -275,7 +297,7 @@ deploymentSpec:
           \                raise FileNotFoundError(f\"Expected output missing: {src}\"\
           )\n            Path(destination).parent.mkdir(parents=True, exist_ok=True)\n\
           \            shutil.copyfile(src, destination)\n\n"
-        image: python:3.14-slim
+        image: jupyterlab-kfp:0.1.0
     exec-register-candidates:
       container:
         args:
@@ -325,7 +347,7 @@ deploymentSpec:
           validation_path\": validation_path.path,\n    }\n    Path(registry_summary_path.path).write_text(\n\
           \        json.dumps(summary, indent=2, ensure_ascii=False),\n        encoding=\"\
           utf-8\",\n    )\n\n"
-        image: python:3.14-slim
+        image: jupyterlab-kfp:0.1.0
 pipelineInfo:
   description: Kubeflow-native orchestration for the current MLflow/DVC project.
   name: electricity-forecaster-kubeflow
@@ -389,17 +411,33 @@ root:
               componentInputParameter: source_dir
         taskInfo:
           name: govern-champion
+      importer:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-importer
+        inputs:
+          parameters:
+            uri:
+              componentInputParameter: raw_dataset_uri
+        taskInfo:
+          name: importer
       prepare-data:
         cachingOptions:
           enableCache: true
         componentRef:
           name: comp-prepare-data
+        dependentTasks:
+        - importer
         inputs:
+          artifacts:
+            raw_dataset:
+              taskOutputArtifact:
+                outputArtifactKey: artifact
+                producerTask: importer
           parameters:
             mlflow_tracking_uri:
               componentInputParameter: mlflow_tracking_uri
-            raw_dataset_path:
-              componentInputParameter: raw_dataset_path
             source_dir:
               componentInputParameter: source_dir
             split_strategy:
@@ -460,8 +498,8 @@ root:
         defaultValue: electricity_forecaster
         isOptional: true
         parameterType: STRING
-      raw_dataset_path:
-        defaultValue: shared/dataset/LD2011_2014_kwh.parquet
+      raw_dataset_uri:
+        defaultValue: s3://models/datasets/LD2011_2014_kwh.parquet
         isOptional: true
         parameterType: STRING
       second_strategy:
