@@ -23,7 +23,7 @@ from pathlib import Path
 from kfp import compiler, dsl
 from kfp.dsl import Dataset, Input, Output
 
-COMPONENT_IMAGE = os.environ.get("KUBEFLOW_COMPONENT_IMAGE", "python:3.13-slim")
+COMPONENT_IMAGE = os.environ.get("KUBEFLOW_COMPONENT_IMAGE", "python:3.14-slim")
 DEFAULT_SOURCE_DIR = os.environ.get("KUBEFLOW_SOURCE_DIR", "/workspace/jupyterlab")
 DEFAULT_RAW_DATASET = os.environ.get(
     "KUBEFLOW_RAW_DATASET",
@@ -137,23 +137,26 @@ def register_candidates(
 
 
 @dsl.component(base_image=COMPONENT_IMAGE)
-def promote_champion(
+def govern_champion(
     source_dir: str,
     model_name: str,
     min_gain: float,
+    dry_run: str,
     mlflow_tracking_uri: str,
-    promotion_summary_path: Output[Dataset],
+    governance_summary_path: Output[Dataset],
 ) -> None:
-    """Apply the registry quality gate and persist a simple decision artifact."""
+    """Run governance decision and persist a simple decision artifact."""
 
     _run_script(
         source_dir=source_dir,
-        script_name="promote.py",
+        script_name="govern.py",
         args=[
             "--model-name",
             model_name,
             "--min-gain",
             str(min_gain),
+            "--dry-run",
+            dry_run,
         ],
         mlflow_tracking_uri=mlflow_tracking_uri,
     )
@@ -161,9 +164,10 @@ def promote_champion(
     summary = {
         "model_name": model_name,
         "min_gain": min_gain,
-        "decision": "logged in MLflow registry tags",
+        "dry_run": dry_run,
+        "decision": "logged in MLflow registry tags by govern.py",
     }
-    Path(promotion_summary_path.path).write_text(
+    Path(governance_summary_path.path).write_text(
         json.dumps(summary, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
@@ -218,6 +222,7 @@ def electricity_forecaster_pipeline(
     strategy: str = "mixed",
     split_strategy: str = "full_history",
     min_gain: float = 0.02,
+    governance_dry_run: str = "false",
 ) -> None:
     """Kubeflow-native orchestration for the current MLflow/DVC project."""
 
@@ -239,10 +244,11 @@ def electricity_forecaster_pipeline(
         mlflow_tracking_uri=mlflow_tracking_uri,
     )
 
-    promoted = promote_champion(
+    governed = govern_champion(
         source_dir=source_dir,
         model_name=model_name,
         min_gain=min_gain,
+        dry_run=governance_dry_run,
         mlflow_tracking_uri=mlflow_tracking_uri,
     )
 
@@ -252,7 +258,7 @@ def electricity_forecaster_pipeline(
         test_path=data.outputs["test_path"],
         reference_path=data.outputs["train_path"],
         mlflow_tracking_uri=mlflow_tracking_uri,
-    ).after(promoted).after(registered)
+    ).after(governed).after(registered)
 
 
 def compile_pipeline(output_path: Path) -> None:

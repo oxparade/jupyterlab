@@ -45,6 +45,26 @@ entry_points:
       dry_run: {type: str, default: true}
     command: "python3 govern.py --model-name {model_name} --min-gain {min_gain} --dry-run {dry_run}"
 
+  submit_kubeflow:
+    parameters:
+      host: {type: str, default: ""}
+      namespace: {type: str, default: kubeflow}
+      experiment_name: {type: str, default: electricity-forecaster}
+      pipeline_package: {type: path, default: kubeflow_pipeline.yaml}
+      ssl_ca_cert: {type: str, default: ""}
+      source_dir: {type: str, default: /workspace/jupyterlab}
+      raw_dataset_path: {type: str, default: shared/dataset/LD2011_2014_kwh.parquet}
+      mlflow_tracking_uri: {type: str, default: ""}
+      model_name: {type: str, default: electricity_forecaster}
+      first_strategy: {type: str, default: short_memory}
+      second_strategy: {type: str, default: mixed}
+      strategy: {type: str, default: mixed}
+      split_strategy: {type: str, default: full_history}
+      min_gain: {type: float, default: 0.02}
+      governance_dry_run: {type: str, default: false}
+      enable_caching: {type: str, default: true}
+    command: "python3 submit_kubeflow_run.py --host {host} --namespace {namespace} --experiment-name {experiment_name} --pipeline-package {pipeline_package} --compile-if-missing --insecure --source-dir {source_dir} --raw-dataset-path {raw_dataset_path} --mlflow-tracking-uri {mlflow_tracking_uri} --model-name {model_name} --first-strategy {first_strategy} --second-strategy {second_strategy} --strategy {strategy} --split-strategy {split_strategy} --min-gain {min_gain} --governance-dry-run {governance_dry_run} --enable-caching {enable_caching} --ssl-ca-cert {ssl_ca_cert}"
+
   main:
     parameters:
       strategy: {type: str, default: mixed}

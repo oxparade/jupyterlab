@@ -1,0 +1,435 @@
+# PIPELINE DEFINITION
+# Name: electricity-forecaster-kubeflow
+# Description: Kubeflow-native orchestration for the current MLflow/DVC project.
+# Inputs:
+#    first_strategy: str [Default: 'short_memory']
+#    governance_dry_run: str [Default: 'false']
+#    min_gain: float [Default: 0.02]
+#    mlflow_tracking_uri: str [Default: '']
+#    model_name: str [Default: 'electricity_forecaster']
+#    raw_dataset_path: str [Default: 'shared/dataset/LD2011_2014_kwh.parquet']
+#    second_strategy: str [Default: 'mixed']
+#    source_dir: str [Default: '/workspace/jupyterlab']
+#    split_strategy: str [Default: 'full_history']
+#    strategy: str [Default: 'mixed']
+components:
+  comp-evaluate-champion:
+    executorLabel: exec-evaluate-champion
+    inputDefinitions:
+      artifacts:
+        reference_path:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        test_path:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        mlflow_tracking_uri:
+          parameterType: STRING
+        model_name:
+          parameterType: STRING
+        source_dir:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        evaluation_summary_path:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-govern-champion:
+    executorLabel: exec-govern-champion
+    inputDefinitions:
+      parameters:
+        dry_run:
+          parameterType: STRING
+        min_gain:
+          parameterType: NUMBER_DOUBLE
+        mlflow_tracking_uri:
+          parameterType: STRING
+        model_name:
+          parameterType: STRING
+        source_dir:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        governance_summary_path:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-prepare-data:
+    executorLabel: exec-prepare-data
+    inputDefinitions:
+      parameters:
+        mlflow_tracking_uri:
+          parameterType: STRING
+        raw_dataset_path:
+          parameterType: STRING
+        source_dir:
+          parameterType: STRING
+        split_strategy:
+          parameterType: STRING
+        strategy:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        test_path:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        train_path:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        validation_path:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-register-candidates:
+    executorLabel: exec-register-candidates
+    inputDefinitions:
+      artifacts:
+        train_path:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+        validation_path:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        first_strategy:
+          parameterType: STRING
+        mlflow_tracking_uri:
+          parameterType: STRING
+        model_name:
+          parameterType: STRING
+        second_strategy:
+          parameterType: STRING
+        source_dir:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        registry_summary_path:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-evaluate-champion:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - evaluate_champion
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.16.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef evaluate_champion(\n    source_dir: str,\n    model_name: str,\n\
+          \    test_path: Input[Dataset],\n    reference_path: Input[Dataset],\n \
+          \   mlflow_tracking_uri: str,\n    evaluation_summary_path: Output[Dataset],\n\
+          ) -> None:\n    \"\"\"Evaluate the promoted champion through predict_mlflow.py.\"\
+          \"\"\n\n    model_uri = f\"models:/{model_name}@champion\"\n    _run_script(\n\
+          \        source_dir=source_dir,\n        script_name=\"predict_mlflow.py\"\
+          ,\n        args=[\n            \"--model\",\n            model_uri,\n  \
+          \          \"--data\",\n            test_path.path,\n            \"--reference-data\"\
+          ,\n            reference_path.path,\n        ],\n        mlflow_tracking_uri=mlflow_tracking_uri,\n\
+          \    )\n\n    summary = {\n        \"model_uri\": model_uri,\n        \"\
+          test_path\": test_path.path,\n        \"reference_path\": reference_path.path,\n\
+          \        \"note\": \"Detailed metrics are logged in MLflow by predict_mlflow.py\"\
+          ,\n    }\n    Path(evaluation_summary_path.path).write_text(\n        json.dumps(summary,\
+          \ indent=2, ensure_ascii=False),\n        encoding=\"utf-8\",\n    )\n\n"
+        image: python:3.14-slim
+    exec-govern-champion:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - govern_champion
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.16.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef govern_champion(\n    source_dir: str,\n    model_name: str,\n\
+          \    min_gain: float,\n    dry_run: str,\n    mlflow_tracking_uri: str,\n\
+          \    governance_summary_path: Output[Dataset],\n) -> None:\n    \"\"\"Run\
+          \ governance decision and persist a simple decision artifact.\"\"\"\n\n\
+          \    _run_script(\n        source_dir=source_dir,\n        script_name=\"\
+          govern.py\",\n        args=[\n            \"--model-name\",\n          \
+          \  model_name,\n            \"--min-gain\",\n            str(min_gain),\n\
+          \            \"--dry-run\",\n            dry_run,\n        ],\n        mlflow_tracking_uri=mlflow_tracking_uri,\n\
+          \    )\n\n    summary = {\n        \"model_name\": model_name,\n       \
+          \ \"min_gain\": min_gain,\n        \"dry_run\": dry_run,\n        \"decision\"\
+          : \"logged in MLflow registry tags by govern.py\",\n    }\n    Path(governance_summary_path.path).write_text(\n\
+          \        json.dumps(summary, indent=2, ensure_ascii=False),\n        encoding=\"\
+          utf-8\",\n    )\n\n"
+        image: python:3.14-slim
+    exec-prepare-data:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - prepare_data
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.16.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef prepare_data(\n    source_dir: str,\n    raw_dataset_path: str,\n\
+          \    strategy: str,\n    split_strategy: str,\n    mlflow_tracking_uri:\
+          \ str,\n    train_path: Output[Dataset],\n    validation_path: Output[Dataset],\n\
+          \    test_path: Output[Dataset],\n) -> None:\n    \"\"\"Run prep.py and\
+          \ expose the split parquet files as KFP artifacts.\"\"\"\n\n    with tempfile.TemporaryDirectory()\
+          \ as temp_dir:\n        _run_script(\n            source_dir=source_dir,\n\
+          \            script_name=\"prep.py\",\n            args=[\n            \
+          \    \"--input\",\n                raw_dataset_path,\n                \"\
+          --output\",\n                temp_dir,\n                \"--strategy\",\n\
+          \                strategy,\n                \"--split-strategy\",\n    \
+          \            split_strategy,\n            ],\n            mlflow_tracking_uri=mlflow_tracking_uri,\n\
+          \        )\n\n        produced = {\n            \"train.parquet\": train_path.path,\n\
+          \            \"validation.parquet\": validation_path.path,\n           \
+          \ \"test.parquet\": test_path.path,\n        }\n        for filename, destination\
+          \ in produced.items():\n            src = Path(temp_dir) / filename\n  \
+          \          if not src.exists():\n                raise FileNotFoundError(f\"\
+          Expected output missing: {src}\")\n            Path(destination).parent.mkdir(parents=True,\
+          \ exist_ok=True)\n            shutil.copyfile(src, destination)\n\n"
+        image: python:3.14-slim
+    exec-register-candidates:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - register_candidates
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'kfp==2.16.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef register_candidates(\n    source_dir: str,\n    train_path: Input[Dataset],\n\
+          \    validation_path: Input[Dataset],\n    model_name: str,\n    first_strategy:\
+          \ str,\n    second_strategy: str,\n    mlflow_tracking_uri: str,\n    registry_summary_path:\
+          \ Output[Dataset],\n) -> None:\n    \"\"\"Register two candidate strategies\
+          \ and write a tiny summary artifact.\"\"\"\n\n    _run_script(\n       \
+          \ source_dir=source_dir,\n        script_name=\"register.py\",\n       \
+          \ args=[\n            \"--train\",\n            train_path.path,\n     \
+          \       \"--validation\",\n            validation_path.path,\n         \
+          \   \"--model-name\",\n            model_name,\n            \"--first-strategy\"\
+          ,\n            first_strategy,\n            \"--second-strategy\",\n   \
+          \         second_strategy,\n        ],\n        mlflow_tracking_uri=mlflow_tracking_uri,\n\
+          \    )\n\n    summary = {\n        \"model_name\": model_name,\n       \
+          \ \"first_strategy\": first_strategy,\n        \"second_strategy\": second_strategy,\n\
+          \        \"train_path\": train_path.path,\n        \"validation_path\":\
+          \ validation_path.path,\n    }\n    Path(registry_summary_path.path).write_text(\n\
+          \        json.dumps(summary, indent=2, ensure_ascii=False),\n        encoding=\"\
+          utf-8\",\n    )\n\n"
+        image: python:3.14-slim
+pipelineInfo:
+  description: Kubeflow-native orchestration for the current MLflow/DVC project.
+  name: electricity-forecaster-kubeflow
+root:
+  dag:
+    tasks:
+      evaluate-champion:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-evaluate-champion
+        dependentTasks:
+        - govern-champion
+        - prepare-data
+        - register-candidates
+        inputs:
+          artifacts:
+            reference_path:
+              taskOutputArtifact:
+                outputArtifactKey: train_path
+                producerTask: prepare-data
+            test_path:
+              taskOutputArtifact:
+                outputArtifactKey: test_path
+                producerTask: prepare-data
+          parameters:
+            mlflow_tracking_uri:
+              componentInputParameter: mlflow_tracking_uri
+            model_name:
+              componentInputParameter: model_name
+            source_dir:
+              componentInputParameter: source_dir
+        taskInfo:
+          name: evaluate-champion
+      govern-champion:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-govern-champion
+        inputs:
+          parameters:
+            dry_run:
+              componentInputParameter: governance_dry_run
+            min_gain:
+              componentInputParameter: min_gain
+            mlflow_tracking_uri:
+              componentInputParameter: mlflow_tracking_uri
+            model_name:
+              componentInputParameter: model_name
+            source_dir:
+              componentInputParameter: source_dir
+        taskInfo:
+          name: govern-champion
+      prepare-data:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-prepare-data
+        inputs:
+          parameters:
+            mlflow_tracking_uri:
+              componentInputParameter: mlflow_tracking_uri
+            raw_dataset_path:
+              componentInputParameter: raw_dataset_path
+            source_dir:
+              componentInputParameter: source_dir
+            split_strategy:
+              componentInputParameter: split_strategy
+            strategy:
+              componentInputParameter: strategy
+        taskInfo:
+          name: prepare-data
+      register-candidates:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-register-candidates
+        dependentTasks:
+        - prepare-data
+        inputs:
+          artifacts:
+            train_path:
+              taskOutputArtifact:
+                outputArtifactKey: train_path
+                producerTask: prepare-data
+            validation_path:
+              taskOutputArtifact:
+                outputArtifactKey: validation_path
+                producerTask: prepare-data
+          parameters:
+            first_strategy:
+              componentInputParameter: first_strategy
+            mlflow_tracking_uri:
+              componentInputParameter: mlflow_tracking_uri
+            model_name:
+              componentInputParameter: model_name
+            second_strategy:
+              componentInputParameter: second_strategy
+            source_dir:
+              componentInputParameter: source_dir
+        taskInfo:
+          name: register-candidates
+  inputDefinitions:
+    parameters:
+      first_strategy:
+        defaultValue: short_memory
+        isOptional: true
+        parameterType: STRING
+      governance_dry_run:
+        defaultValue: 'false'
+        isOptional: true
+        parameterType: STRING
+      min_gain:
+        defaultValue: 0.02
+        isOptional: true
+        parameterType: NUMBER_DOUBLE
+      mlflow_tracking_uri:
+        defaultValue: ''
+        isOptional: true
+        parameterType: STRING
+      model_name:
+        defaultValue: electricity_forecaster
+        isOptional: true
+        parameterType: STRING
+      raw_dataset_path:
+        defaultValue: shared/dataset/LD2011_2014_kwh.parquet
+        isOptional: true
+        parameterType: STRING
+      second_strategy:
+        defaultValue: mixed
+        isOptional: true
+        parameterType: STRING
+      source_dir:
+        defaultValue: /workspace/jupyterlab
+        isOptional: true
+        parameterType: STRING
+      split_strategy:
+        defaultValue: full_history
+        isOptional: true
+        parameterType: STRING
+      strategy:
+        defaultValue: mixed
+        isOptional: true
+        parameterType: STRING
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.16.1

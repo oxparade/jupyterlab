@@ -477,7 +477,7 @@ Ce pipeline enchaîne les scripts existants sans réécrire toute la logique mé
 
 - préparation des splits via `prep.py` ;
 - enregistrement des candidats via `register.py` ;
-- promotion via `promote.py` ;
+- décision de gouvernance via `govern.py` ;
 - évaluation du champion via `predict_mlflow.py`.
 
 Hypothèse de déploiement : sur la VM, il existe déjà un container Kubeflow / un runtime partagé.
@@ -490,11 +490,29 @@ Compilation du pipeline :
 python kubeflow_pipeline.py --output kubeflow_pipeline.yaml
 ```
 
+Soumettre un run au cluster Kubeflow (runtime déjà présent sur la VM) :
+
+```bash
+export KFP_HOST="https://<kfp-endpoint>"
+export KFP_TOKEN="<token-si-necessaire>"
+python submit_kubeflow_run.py --compile-if-missing --namespace kubeflow --insecure
+```
+
+Alternative via MLflow Projects :
+
+```bash
+mlflow run . -e submit_kubeflow --env-manager local -P host=https://<kfp-endpoint> -P namespace=kubeflow
+```
+
 Variables utiles lors du déploiement :
 
 - `KUBEFLOW_COMPONENT_IMAGE` : image Kubeflow à utiliser pour les composants ;
 - `KUBEFLOW_SOURCE_DIR` : chemin du dépôt monté dans le conteneur ;
 - `KUBEFLOW_RAW_DATASET` : chemin du parquet source dans l’environnement Kubeflow.
+
+Paramètre pipeline utile :
+
+- `governance_dry_run` : `false` pour autoriser le changement d’alias `champion`, `true` pour audit sans promotion.
 
 En pratique, le prochain ajustement utile sera de brancher ce squelette sur le stockage réellement exposé par la VM
 (PVC ou bucket objet) pour éviter les chemins locaux implicites.
