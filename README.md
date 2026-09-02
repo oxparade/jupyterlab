@@ -351,8 +351,26 @@ Le cycle de vie modèle est scripté avec aliases :
 
 - `register.py` : entraîne 2 stratégies, enregistre 2 versions, pose `champion` / `challenger`.
 - `promote.py` : applique une quality gate (`validated`, `passed_validation`, gain minimal),
-  trace acceptation/rejet, puis démontre promotion/rollback.
+    trace acceptation/rejet, puis démontre promotion/rollback.
 - aliases multi-environnements : `prod-eu`, `prod-us`, `shadow`.
+
+Le retraining est aussi tracé comme un vrai cycle automatisé :
+
+- `train_mlflow.py` logge des runs imbriqués pour chaque candidat et compare les résultats avec
+    `mlflow.search_runs` avant de sélectionner automatiquement le meilleur modèle ;
+- les jeux de données d'entraînement et de validation sont versionnés via `mlflow.data` et leur
+    digest est loggé pour garantir la traçabilité exacte des données utilisées ;
+- `retrain_validate.py` orchestre le cycle complet déclencheur → challenger → comparaison → décision
+    et conserve la décision dans MLflow ; le déclencheur est tracé explicitement comme
+    `manual`, `scheduled` ou `ci` ;
+- `promote.py` trace la quality gate jusqu'au run du challenger et aux tags de la version registry.
+- les runs et versions portent maintenant aussi des tags de provenance pour filtrer facilement
+    dans l’UI MLflow.
+
+Oui, les alias sont bien en place aussi :
+
+- `champion` / `challenger` dans [register.py](register.py) ;
+- alias de déploiement `prod-eu`, `prod-us`, `shadow` dans [promote.py](promote.py).
 
 Commandes :
 
@@ -438,6 +456,8 @@ Les pistes ci-dessous ont finalement été implémentées dans le projet :
 - `TimeSeriesSplit` / backtesting temporel ;
 - comparaison avec `HistGradientBoostingRegressor` ;
 - comparaison Ridge avec/sans standardisation ;
+- comparaison automatique des runs imbriqués avec `mlflow.search_runs` ;
+- traçabilité des données d'entraînement et de validation via `mlflow.data.digest` ;
 - résidus par heure, jour, mois et client ;
 - suivi du drift avec Evidently ;
 - logging du hash Git et de la version DVC dans MLflow ;

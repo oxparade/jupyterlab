@@ -48,10 +48,11 @@ entry_points:
 
   retrain_validate:
     parameters:
+      trigger_source: {type: str, default: auto}
       strategy: {type: str, default: mixed}
       split_strategy: {type: str, default: full_history}
       register_model: {type: str, default: false}
       promote_model: {type: str, default: false}
       model_name: {type: str, default: electricity_forecaster}
       min_gain: {type: float, default: 0.02}
-    command: "python3 retrain_validate.py --strategy {strategy} --split-strategy {split_strategy} --register-model {register_model} --promote-model {promote_model} --model-name {model_name} --min-gain {min_gain}"
+    command: "python3 retrain_validate.py --trigger-source {trigger_source} --strategy {strategy} --split-strategy {split_strategy} --register-model {register_model} --promote-model {promote_model} --model-name {model_name} --min-gain {min_gain}"

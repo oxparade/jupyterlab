@@ -3,6 +3,10 @@ name: retrain-validation
 on:
   workflow_dispatch:
     inputs:
+      trigger_source:
+        description: Retraining trigger category
+        required: false
+        default: manual
       strategy:
         description: Feature strategy
         required: false
@@ -63,6 +67,7 @@ jobs:
           MLFLOW_TRACKING_URI: ${{ secrets.MLFLOW_TRACKING_URI }}
         run: |
           python retrain_validate.py \
+            --trigger-source "${{ github.event_name == 'schedule' && 'scheduled' || github.event.inputs.trigger_source || 'manual' }}" \
             --strategy "${{ github.event.inputs.strategy || 'mixed' }}" \
             --split-strategy "${{ github.event.inputs.split_strategy || 'full_history' }}" \
             --register-model "${{ github.event.inputs.register_model || 'false' }}" \

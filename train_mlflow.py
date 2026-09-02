@@ -3,12 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import json
 from contextlib import nullcontext
 import hashlib
 import logging
 import os
 from pathlib import Path
 import subprocess
+import tempfile
 from typing import Any
 
 import mlflow
@@ -61,6 +63,90 @@ def _log_repro_context() -> None:
         mlflow.set_tag("dvc_version", dvc_version)
     if dvc_lock_hash:
         mlflow.set_tag("dvc_lock_sha256", dvc_lock_hash)
+
+
+def _log_nested_run_summary(parent_run_id: str, expected_best: dict[str, float]) -> None:
+    """Compare nested alpha runs with search_runs and trace the selected candidate."""
+    experiment = mlflow.get_experiment_by_name(EXPERIMENT)
+    if experiment is None:
+        logger.warning("Experiment %s not found; skipping nested run summary", EXPERIMENT)
+        return
+
+    runs = mlflow.search_runs(
+        experiment_ids=[experiment.experiment_id],
+        filter_string=f"tags.mlflow.parentRunId = '{parent_run_id}'",
+    )
+    if runs.empty:
+        logger.warning("No nested runs found for parent run %s", parent_run_id)
+        return
+
+    sort_columns = [
+        column
+        for column in ("metrics.validation_rmse", "metrics.validation_mae", "start_time")
+        if column in runs.columns
+    ]
+    if sort_columns:
+        runs = runs.sort_values(by=sort_columns, ascending=[True] * len(sort_columns))
+
+    comparison_columns = [
+        column
+        for column in (
+            "run_id",
+            "params.alpha",
+            "params.standardize",
+            "metrics.validation_rmse",
+            "metrics.validation_mae",
+            "start_time",
+        )
+        if column in runs.columns
+    ]
+    comparison = runs.loc[:, comparison_columns].copy()
+    comparison.insert(0, "rank", range(1, len(comparison) + 1))
+
+    best_row = runs.iloc[0]
+    selected_run_id = str(best_row["run_id"])
+    selected_rmse = float(best_row["metrics.validation_rmse"])
+    selected_mae = float(best_row["metrics.validation_mae"])
+
+    mlflow.log_param("best_child_run_id", selected_run_id)
+    if "params.alpha" in runs.columns:
+        mlflow.log_param("best_child_alpha", str(best_row["params.alpha"]))
+    if "params.standardize" in runs.columns:
+        mlflow.log_param("best_child_standardize", str(best_row["params.standardize"]))
+    mlflow.log_metric("best_child_validation_rmse", selected_rmse)
+    mlflow.log_metric("best_child_validation_mae", selected_mae)
+
+    if "rmse" in expected_best:
+        expected_rmse = float(expected_best["rmse"])
+        if abs(selected_rmse - expected_rmse) > 1e-12:
+            logger.warning(
+                "search_runs best rmse %.6f differs from in-memory best %.6f",
+                selected_rmse,
+                expected_rmse,
+            )
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        temp_path = Path(temp_dir)
+        comparison_path = temp_path / "nested_runs_comparison.csv"
+        comparison.to_csv(comparison_path, index=False)
+        mlflow.log_artifact(str(comparison_path), artifact_path="comparison")
+
+        summary_path = temp_path / "nested_runs_summary.json"
+        summary_path.write_text(
+            json.dumps(
+                {
+                    "parent_run_id": parent_run_id,
+                    "selected_run_id": selected_run_id,
+                    "selected_validation_rmse": selected_rmse,
+                    "selected_validation_mae": selected_mae,
+                    "n_candidates": int(len(runs)),
+                },
+                indent=2,
+                ensure_ascii=False,
+            ),
+            encoding="utf-8",
+        )
+        mlflow.log_artifact(str(summary_path), artifact_path="comparison")
 
 
 def _extract_ridge_coefficients(model: Any) -> Any | None:
@@ -121,6 +207,8 @@ def main(
         _log_repro_context()
         mlflow.log_input(training_dataset, context="training")
         mlflow.log_input(validation_dataset, context="validation")
+        mlflow.log_param("train_digest", training_dataset.digest)
+        mlflow.log_param("validation_digest", validation_dataset.digest)
         mlflow.log_param("train_path", str(data))
         mlflow.log_param("validation_path", str(validation))
         mlflow.log_param("n_features", len(features))
@@ -166,6 +254,11 @@ def main(
 
         if best_model is None or best_alpha is None or best_metrics is None or best_standardize is None:
             raise RuntimeError("Aucun modèle entraîné — vérifier RIDGE_ALPHAS.")
+
+        active_run = mlflow.active_run()
+        if active_run is None:
+            raise RuntimeError("An active MLflow run is required to log the selected candidate.")
+        _log_nested_run_summary(active_run.info.run_id, best_metrics)
 
         signature = infer_signature(X_validation, best_model.predict(X_validation))
         input_example = X_validation.head(5)

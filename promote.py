@@ -38,10 +38,14 @@ def main(model_name: str, min_gain: float) -> None:
     challenger_mv = client.get_model_version_by_alias(model_name, "challenger")
     champion_before = str(champion_before_mv.version)
     challenger_version = str(challenger_mv.version)
+    challenger_run_id = challenger_mv.run_id
 
     champion_rmse = _tag_float(champion_before_mv.tags, "rmse")
     challenger_rmse = _tag_float(challenger_mv.tags, "rmse")
+    champion_mae = _tag_float(champion_before_mv.tags, "mae")
+    challenger_mae = _tag_float(challenger_mv.tags, "mae")
     gain = (champion_rmse - challenger_rmse) / champion_rmse
+    mae_gain = (champion_mae - challenger_mae) / champion_mae
     challenger_validated = _tag_bool(challenger_mv.tags, "validated", default=False)
     challenger_passed = _tag_bool(challenger_mv.tags, "passed_validation", default=False)
 
@@ -67,6 +71,24 @@ def main(model_name: str, min_gain: float) -> None:
         client.set_model_version_tag(model_name, challenger_version, "rejected_reason", reason)
         client.set_model_version_tag(model_name, challenger_version, "decision_note", f"rejected: {reason}")
 
+    client.set_model_version_tag(model_name, challenger_version, "rmse_gain", f"{gain:.6f}")
+    client.set_model_version_tag(model_name, challenger_version, "mae_gain", f"{mae_gain:.6f}")
+
+    if challenger_run_id:
+        client.log_param(challenger_run_id, "promotion_model_name", model_name)
+        client.log_param(challenger_run_id, "promotion_champion_before_version", champion_before)
+        client.log_param(challenger_run_id, "promotion_challenger_version", challenger_version)
+        client.log_param(challenger_run_id, "promotion_min_gain", f"{min_gain:.6f}")
+        client.log_param(
+            challenger_run_id,
+            "promotion_decision",
+            "accepted" if decision_ok else "rejected",
+        )
+        client.log_metric(challenger_run_id, "promotion_rmse_gain", float(gain))
+        client.log_metric(challenger_run_id, "promotion_mae_gain", float(mae_gain))
+        client.set_tag(challenger_run_id, "promotion_status", "accepted" if decision_ok else "rejected")
+        client.set_tag(challenger_run_id, "promotion_note", "quality gate traced from model registry")
+
     champion_uri = f"models:/{model_name}@champion"
     champion_model_before = mlflow.pyfunc.load_model(champion_uri)
     logger.info("Loaded champion before promotion from %s", champion_uri)
@@ -89,6 +111,7 @@ def main(model_name: str, min_gain: float) -> None:
     print(f"- challenger: v{challenger_version}")
     print(f"- quality gate: {'accepted' if decision_ok else 'rejected'}")
     print(f"- gain vs champion: {gain:.2%} (minimum required: {min_gain:.2%})")
+    print(f"- mae gain vs champion: {mae_gain:.2%}")
     print(f"- champion after promotion: v{champion_after}")
     print(f"- champion after rollback: v{champion_rollback}")
     print("- multi-env aliases -> challenger version:")

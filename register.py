@@ -141,6 +141,8 @@ def main(
 
                 client.set_model_version_tag(model_name, version, "strategy", strategy.value)
                 client.set_model_version_tag(model_name, version, "selected_alpha", str(alpha))
+                client.set_model_version_tag(model_name, version, "train_digest", training_dataset.digest)
+                client.set_model_version_tag(model_name, version, "validation_digest", validation_dataset.digest)
                 client.set_model_version_tag(
                     model_name,
                     version,
