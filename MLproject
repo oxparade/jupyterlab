@@ -38,6 +38,13 @@ entry_points:
       min_gain: {type: float, default: 0.02}
     command: "python3 promote.py --model-name {model_name} --min-gain {min_gain}"
 
+  govern:
+    parameters:
+      model_name: {type: str, default: electricity_forecaster}
+      min_gain: {type: float, default: 0.02}
+      dry_run: {type: str, default: true}
+    command: "python3 govern.py --model-name {model_name} --min-gain {min_gain} --dry-run {dry_run}"
+
   main:
     parameters:
       strategy: {type: str, default: mixed}

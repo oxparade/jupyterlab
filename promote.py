@@ -52,6 +52,7 @@ def main(model_name: str, min_gain: float) -> None:
     decision_ok = challenger_validated and challenger_passed and gain >= min_gain
     if decision_ok:
         client.set_model_version_tag(model_name, challenger_version, "promotion_status", "accepted")
+        client.set_model_version_tag(model_name, challenger_version, "governance_decision", "promoted_to_champion")
         client.set_model_version_tag(
             model_name,
             challenger_version,
@@ -68,11 +69,14 @@ def main(model_name: str, min_gain: float) -> None:
             reasons.append(f"gain {gain:.2%} < {min_gain:.2%}")
         reason = " ; ".join(reasons)
         client.set_model_version_tag(model_name, challenger_version, "promotion_status", "rejected")
+        client.set_model_version_tag(model_name, challenger_version, "governance_decision", "held_as_challenger")
         client.set_model_version_tag(model_name, challenger_version, "rejected_reason", reason)
         client.set_model_version_tag(model_name, challenger_version, "decision_note", f"rejected: {reason}")
 
     client.set_model_version_tag(model_name, challenger_version, "rmse_gain", f"{gain:.6f}")
     client.set_model_version_tag(model_name, challenger_version, "mae_gain", f"{mae_gain:.6f}")
+    client.set_model_version_tag(model_name, challenger_version, "promotion_threshold", f"{min_gain:.6f}")
+    client.set_model_version_tag(model_name, challenger_version, "comparison_basis", "champion_vs_challenger")
 
     if challenger_run_id:
         client.log_param(challenger_run_id, "promotion_model_name", model_name)
@@ -88,6 +92,8 @@ def main(model_name: str, min_gain: float) -> None:
         client.log_metric(challenger_run_id, "promotion_mae_gain", float(mae_gain))
         client.set_tag(challenger_run_id, "promotion_status", "accepted" if decision_ok else "rejected")
         client.set_tag(challenger_run_id, "promotion_note", "quality gate traced from model registry")
+        client.set_tag(challenger_run_id, "promotion_threshold", f"{min_gain:.6f}")
+        client.set_tag(challenger_run_id, "promotion_gain_basis", "rmse_vs_champion")
 
     champion_uri = f"models:/{model_name}@champion"
     champion_model_before = mlflow.pyfunc.load_model(champion_uri)

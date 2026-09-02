@@ -75,6 +75,17 @@ def _wait_model_ready(client: MlflowClient, model_name: str, version: str, timeo
         time.sleep(1)
 
 
+def _governance_description(strategy: ModellingStrategy, features: list[str], metrics: dict[str, float]) -> str:
+    feature_list = ", ".join(features)
+    return (
+        "Day-ahead electricity forecast using lag-based features only. "
+        f"Strategy={strategy.value}; features=[{feature_list}]; "
+        f"validation_rmse={metrics['rmse']:.4f}; validation_mae={metrics['mae']:.4f}. "
+        "Limits: no calendar, weather, or external metadata; one-step forecast only; "
+        "validated on a temporal holdout split."
+    )
+
+
 def main(
     train_path: Path,
     validation_path: Path,
@@ -140,6 +151,14 @@ def main(
                 _wait_model_ready(client, model_name, version)
 
                 client.set_model_version_tag(model_name, version, "strategy", strategy.value)
+                client.set_model_version_tag(model_name, version, "feature_set", ",".join(features))
+                client.set_model_version_tag(model_name, version, "model_scope", "day_ahead_electricity_forecast")
+                client.set_model_version_tag(
+                    model_name,
+                    version,
+                    "model_limits",
+                    "no_calendar_no_weather_no_client_metadata_one_step_only",
+                )
                 client.set_model_version_tag(model_name, version, "selected_alpha", str(alpha))
                 client.set_model_version_tag(model_name, version, "train_digest", training_dataset.digest)
                 client.set_model_version_tag(model_name, version, "validation_digest", validation_dataset.digest)
@@ -157,13 +176,17 @@ def main(
                 )
                 client.set_model_version_tag(model_name, version, "passed_validation", "true")
                 client.set_model_version_tag(model_name, version, "validated", "true")
+                client.set_model_version_tag(model_name, version, "validation_status", "passed")
+                client.set_model_version_tag(
+                    model_name,
+                    version,
+                    "validation_reason",
+                    f"holdout_rmse={metrics['rmse']:.6f}; holdout_mae={metrics['mae']:.6f}",
+                )
                 client.update_model_version(
                     name=model_name,
                     version=version,
-                    description=(
-                        f"Strategy={strategy.value}, alpha={alpha}, "
-                        f"validation_rmse={metrics['rmse']:.4f}, validation_mae={metrics['mae']:.4f}"
-                    ),
+                    description=_governance_description(strategy, features, metrics),
                 )
                 created_versions.append((strategy.value, version))
                 logger.info("Registered %s version=%s", strategy.value, version)

@@ -63,6 +63,21 @@ Ajouter des paramètres explicites pour :
 - le nom du modèle dans le registry ;
 - le bucket / PVC d’artefacts si nécessaire.
 
+### 6. Encoder la gouvernance dans le registry
+
+Pour la partie validation / promotion, il faut expliciter dans MLflow :
+
+- la description métier du modèle ;
+- ses limites connues ;
+- la stratégie de features choisie ;
+- le statut de validation (`passed` / `failed`) ;
+- le motif de la décision ;
+- les métriques de comparaison contre le champion ;
+- les alias cibles (`challenger`, puis `champion` si la gate passe).
+
+L’idée est de pouvoir récupérer tous les modèles validés, les comparer, puis décider
+de manière tracée lesquels deviennent `champion`.
+
 ### 6. Standardiser l’image de conteneur
 
 Le pipeline Kubeflow devrait utiliser une image unique contenant au minimum :

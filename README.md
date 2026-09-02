@@ -352,6 +352,8 @@ Le cycle de vie modèle est scripté avec aliases :
 - `register.py` : entraîne 2 stratégies, enregistre 2 versions, pose `champion` / `challenger`.
 - `promote.py` : applique une quality gate (`validated`, `passed_validation`, gain minimal),
     trace acceptation/rejet, puis démontre promotion/rollback.
+- `govern.py` : compare tous les modèles validés, les classe par métriques, puis décide
+    s’ils peuvent devenir `champion`.
 - aliases multi-environnements : `prod-eu`, `prod-us`, `shadow`.
 
 Le retraining est aussi tracé comme un vrai cycle automatisé :
@@ -363,7 +365,9 @@ Le retraining est aussi tracé comme un vrai cycle automatisé :
 - `retrain_validate.py` orchestre le cycle complet déclencheur → challenger → comparaison → décision
     et conserve la décision dans MLflow ; le déclencheur est tracé explicitement comme
     `manual`, `scheduled` ou `ci` ;
-- `promote.py` trace la quality gate jusqu'au run du challenger et aux tags de la version registry.
+- `promote.py` trace la quality gate jusqu'au run du challenger et aux tags de la version registry ;
+- les versions portent des tags de gouvernance : scope, limites, digest des données, état de validation,
+    motif de décision et gain vs champion ;
 - les runs et versions portent maintenant aussi des tags de provenance pour filtrer facilement
     dans l’UI MLflow.
 
@@ -377,6 +381,7 @@ Commandes :
 ```bash
 mlflow run . -e register --env-manager local
 mlflow run . -e promote --env-manager local -P min_gain=0.02
+mlflow run . -e govern --env-manager local -P min_gain=0.02 -P dry_run=true
 ```
 
 Visualiser le graphe des stages :
