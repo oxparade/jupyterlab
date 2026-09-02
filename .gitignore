@@ -9,6 +9,11 @@ __pycache__/
 .DS_Store
 .vscode/
 
+# Variables d'environnement locales (Kubeflow)
+.env.kfp
+.env.kfp.*
+!.env.kfp.example
+
 # Données (si trop lourdes, utilisez DVC ou ignorez-les)
 data/LD2011_2014.txt
 data/notebooks/LD2011_2014_extrait.txt
