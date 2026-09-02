@@ -1,0 +1,193 @@
+# PIPELINE DEFINITION
+# Name: electricity-first-pipeline
+# Inputs:
+#    features: list [Default: ['lag_1d', 'lag_7d']]
+components:
+  comp-build-features:
+    executorLabel: exec-build-features
+    inputDefinitions:
+      artifacts:
+        in_data:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        features:
+          parameterType: LIST
+    outputDefinitions:
+      artifacts:
+        out_data:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+      parameters:
+        n_rows:
+          parameterType: NUMBER_INTEGER
+  comp-importer:
+    executorLabel: exec-importer
+    inputDefinitions:
+      parameters:
+        uri:
+          parameterType: STRING
+    outputDefinitions:
+      artifacts:
+        artifact:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+  comp-load-data:
+    executorLabel: exec-load-data
+    inputDefinitions:
+      artifacts:
+        dataset:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+    outputDefinitions:
+      artifacts:
+        Output:
+          artifactType:
+            schemaTitle: system.Dataset
+            schemaVersion: 0.0.1
+deploymentSpec:
+  executors:
+    exec-build-features:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - build_features
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'pandas' 'pyarrow'\
+          \  &&  python3 -m pip install --quiet --no-warn-script-location 'kfp==2.16.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef build_features(in_data: Input[Dataset], features: list[str])\
+          \ -> NamedTuple(\n    \"Features\", [(\"out_data\", Dataset), (\"n_rows\"\
+          , int)]\n):\n    import pandas as pd\n\n    class Features(NamedTuple):\n\
+          \        out_data: Dataset\n        n_rows: int\n\n    lag_steps = {\"lag_1d\"\
+          : 96, \"lag_7d\": 96 * 7, \"lag_30d\": 96 * 30}\n\n    dataframe = pd.read_parquet(in_data.path)\n\
+          \    long = dataframe.stack().rename(\"consumption\").reset_index()\n  \
+          \  long.columns = [\"timestamp\", \"client\", \"consumption\"]\n    long\
+          \ = long.sort_values([\"client\", \"timestamp\"]).reset_index(drop=True)\n\
+          \n    grouped = long.groupby(\"client\")[\"consumption\"]\n    for feature_name\
+          \ in features:\n        long[feature_name] = grouped.shift(lag_steps[feature_name])\n\
+          \n    long = long.dropna().reset_index(drop=True)\n    out_data = Dataset(uri=dsl.get_uri(\"\
+          out_data\"))\n    long.to_parquet(out_data.path)\n    return Features(out_data=out_data,\
+          \ n_rows=int(long.shape[0]))\n\n"
+        image: python:3.14-slim-trixie
+    exec-importer:
+      importer:
+        artifactUri:
+          constant: s3://models/datasets/LD2011_2014_kwh.parquet
+        typeSchema:
+          schemaTitle: system.Dataset
+          schemaVersion: 0.0.1
+    exec-load-data:
+      container:
+        args:
+        - --executor_input
+        - '{{$}}'
+        - --function_to_execute
+        - load_data
+        command:
+        - sh
+        - -c
+        - "\nif ! [ -x \"$(command -v pip)\" ]; then\n    python3 -m ensurepip ||\
+          \ python3 -m ensurepip --user || apt-get install python3-pip\nfi\n\nPIP_DISABLE_PIP_VERSION_CHECK=1\
+          \ python3 -m pip install --quiet --no-warn-script-location 'pandas' 'pyarrow'\
+          \  &&  python3 -m pip install --quiet --no-warn-script-location 'kfp==2.16.1'\
+          \ '--no-deps' 'typing-extensions>=3.7.4,<5; python_version<\"3.9\"' && \"\
+          $0\" \"$@\"\n"
+        - sh
+        - -ec
+        - 'program_path=$(mktemp -d)
+
+
+          printf "%s" "$0" > "$program_path/ephemeral_component.py"
+
+          _KFP_RUNTIME=true python3 -m kfp.dsl.executor_main                         --component_module_path                         "$program_path/ephemeral_component.py"                         "$@"
+
+          '
+        - "\nimport kfp\nfrom kfp import dsl\nfrom kfp.dsl import *\nfrom typing import\
+          \ *\n\ndef load_data(dataset: Input[Dataset]) -> dsl.Dataset:\n    import\
+          \ pandas as pd\n\n    dataframe = pd.read_parquet(dataset.path).set_index(\"\
+          timestamp\")\n    out_data = dsl.Dataset(uri=dsl.get_uri())\n    dataframe.to_parquet(out_data.path)\n\
+          \    return out_data\n\n"
+        image: python:3.14-slim-trixie
+pipelineInfo:
+  name: electricity-first-pipeline
+root:
+  dag:
+    tasks:
+      build-features:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-build-features
+        dependentTasks:
+        - load-data
+        inputs:
+          artifacts:
+            in_data:
+              taskOutputArtifact:
+                outputArtifactKey: Output
+                producerTask: load-data
+          parameters:
+            features:
+              componentInputParameter: features
+        taskInfo:
+          name: build-features
+      importer:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-importer
+        inputs:
+          parameters:
+            uri:
+              runtimeValue:
+                constant: s3://models/datasets/LD2011_2014_kwh.parquet
+        taskInfo:
+          name: importer
+      load-data:
+        cachingOptions:
+          enableCache: true
+        componentRef:
+          name: comp-load-data
+        dependentTasks:
+        - importer
+        inputs:
+          artifacts:
+            dataset:
+              taskOutputArtifact:
+                outputArtifactKey: artifact
+                producerTask: importer
+        taskInfo:
+          name: load-data
+  inputDefinitions:
+    parameters:
+      features:
+        defaultValue:
+        - lag_1d
+        - lag_7d
+        isOptional: true
+        parameterType: LIST
+schemaVersion: 2.1.0
+sdkVersion: kfp-2.16.1

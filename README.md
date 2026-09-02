@@ -490,13 +490,50 @@ Compilation du pipeline :
 python kubeflow_pipeline.py --output kubeflow_pipeline.yaml
 ```
 
+Vérification rapide (module 3, slides 1 à 12) :
+
+```bash
+/opt/venvs/mlops/bin/python verify_kubeflow_module3.py
+```
+
+Le check valide notamment : `kubectl`, namespaces Kubeflow, token ServiceAccount,
+compilation KFP, et accessibilité de l’API KFP via `istio-ingressgateway`.
+
 Soumettre un run au cluster Kubeflow (runtime déjà présent sur la VM) :
 
 ```bash
 export KFP_HOST="https://<kfp-endpoint>"
 export KFP_TOKEN="<token-si-necessaire>"
+# ou bien: export KFP_COOKIES="authservice_session=<...>"
 python submit_kubeflow_run.py --compile-if-missing --namespace kubeflow --insecure
 ```
+
+Mode recommandé pour l’environnement TP multi-user (namespace profil + token audience KFP) :
+
+```bash
+kubectl port-forward -n istio-system svc/istio-ingressgateway 8081:80
+export KF_TOKEN=$(kubectl create token default-editor -n kubeflow-user-example-com \
+    --audience=pipelines.kubeflow.org --duration=2h)
+python submit_kubeflow_run.py --host http://localhost:8081/pipeline \
+    --namespace kubeflow-user-example-com --token "$KF_TOKEN" --compile-if-missing
+```
+
+Vérification "code ressources module 3" (slides jusqu’à 12) :
+
+```bash
+/opt/venvs/mlops/bin/python cli_kfp_demo.py compile
+/opt/venvs/mlops/bin/python cli_kfp_demo.py run --features full
+```
+
+Version "une commande" pour la démo en groupe :
+
+```bash
+./demo-start.sh
+# ou
+./demo-start.sh full
+```
+
+Si le cluster est multi-user, utiliser le namespace de profil (ex: `kubeflow-user-example-com`).
 
 Alternative via MLflow Projects :
 

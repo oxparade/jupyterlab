@@ -62,9 +62,24 @@ def prepare_data(
 ) -> None:
     """Run prep.py and expose the split parquet files as KFP artifacts."""
 
+    import os
+    import shutil
+    import subprocess
+    import sys
+    import tempfile
+    from pathlib import Path
+
+    def run_script(script_name: str, args: list[str]) -> None:
+        script_path = Path(source_dir) / script_name
+        if not script_path.exists():
+            raise FileNotFoundError(f"Script not found: {script_path}")
+        env = os.environ.copy()
+        if mlflow_tracking_uri:
+            env["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
+        subprocess.run([sys.executable, str(script_path), *args], check=True, env=env)
+
     with tempfile.TemporaryDirectory() as temp_dir:
-        _run_script(
-            source_dir=source_dir,
+        run_script(
             script_name="prep.py",
             args=[
                 "--input",
@@ -76,7 +91,6 @@ def prepare_data(
                 "--split-strategy",
                 split_strategy,
             ],
-            mlflow_tracking_uri=mlflow_tracking_uri,
         )
 
         produced = {
@@ -105,8 +119,22 @@ def register_candidates(
 ) -> None:
     """Register two candidate strategies and write a tiny summary artifact."""
 
-    _run_script(
-        source_dir=source_dir,
+    import json
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    def run_script(script_name: str, args: list[str]) -> None:
+        script_path = Path(source_dir) / script_name
+        if not script_path.exists():
+            raise FileNotFoundError(f"Script not found: {script_path}")
+        env = os.environ.copy()
+        if mlflow_tracking_uri:
+            env["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
+        subprocess.run([sys.executable, str(script_path), *args], check=True, env=env)
+
+    run_script(
         script_name="register.py",
         args=[
             "--train",
@@ -120,7 +148,6 @@ def register_candidates(
             "--second-strategy",
             second_strategy,
         ],
-        mlflow_tracking_uri=mlflow_tracking_uri,
     )
 
     summary = {
@@ -147,8 +174,22 @@ def govern_champion(
 ) -> None:
     """Run governance decision and persist a simple decision artifact."""
 
-    _run_script(
-        source_dir=source_dir,
+    import json
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    def run_script(script_name: str, args: list[str]) -> None:
+        script_path = Path(source_dir) / script_name
+        if not script_path.exists():
+            raise FileNotFoundError(f"Script not found: {script_path}")
+        env = os.environ.copy()
+        if mlflow_tracking_uri:
+            env["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
+        subprocess.run([sys.executable, str(script_path), *args], check=True, env=env)
+
+    run_script(
         script_name="govern.py",
         args=[
             "--model-name",
@@ -158,7 +199,6 @@ def govern_champion(
             "--dry-run",
             dry_run,
         ],
-        mlflow_tracking_uri=mlflow_tracking_uri,
     )
 
     summary = {
@@ -184,9 +224,23 @@ def evaluate_champion(
 ) -> None:
     """Evaluate the promoted champion through predict_mlflow.py."""
 
+    import json
+    import os
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    def run_script(script_name: str, args: list[str]) -> None:
+        script_path = Path(source_dir) / script_name
+        if not script_path.exists():
+            raise FileNotFoundError(f"Script not found: {script_path}")
+        env = os.environ.copy()
+        if mlflow_tracking_uri:
+            env["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
+        subprocess.run([sys.executable, str(script_path), *args], check=True, env=env)
+
     model_uri = f"models:/{model_name}@champion"
-    _run_script(
-        source_dir=source_dir,
+    run_script(
         script_name="predict_mlflow.py",
         args=[
             "--model",
@@ -196,7 +250,6 @@ def evaluate_champion(
             "--reference-data",
             reference_path.path,
         ],
-        mlflow_tracking_uri=mlflow_tracking_uri,
     )
 
     summary = {

@@ -147,15 +147,22 @@ deploymentSpec:
           \    test_path: Input[Dataset],\n    reference_path: Input[Dataset],\n \
           \   mlflow_tracking_uri: str,\n    evaluation_summary_path: Output[Dataset],\n\
           ) -> None:\n    \"\"\"Evaluate the promoted champion through predict_mlflow.py.\"\
-          \"\"\n\n    model_uri = f\"models:/{model_name}@champion\"\n    _run_script(\n\
-          \        source_dir=source_dir,\n        script_name=\"predict_mlflow.py\"\
-          ,\n        args=[\n            \"--model\",\n            model_uri,\n  \
-          \          \"--data\",\n            test_path.path,\n            \"--reference-data\"\
-          ,\n            reference_path.path,\n        ],\n        mlflow_tracking_uri=mlflow_tracking_uri,\n\
-          \    )\n\n    summary = {\n        \"model_uri\": model_uri,\n        \"\
-          test_path\": test_path.path,\n        \"reference_path\": reference_path.path,\n\
-          \        \"note\": \"Detailed metrics are logged in MLflow by predict_mlflow.py\"\
-          ,\n    }\n    Path(evaluation_summary_path.path).write_text(\n        json.dumps(summary,\
+          \"\"\n\n    import json\n    import os\n    import subprocess\n    import\
+          \ sys\n    from pathlib import Path\n\n    def run_script(script_name: str,\
+          \ args: list[str]) -> None:\n        script_path = Path(source_dir) / script_name\n\
+          \        if not script_path.exists():\n            raise FileNotFoundError(f\"\
+          Script not found: {script_path}\")\n        env = os.environ.copy()\n  \
+          \      if mlflow_tracking_uri:\n            env[\"MLFLOW_TRACKING_URI\"\
+          ] = mlflow_tracking_uri\n        subprocess.run([sys.executable, str(script_path),\
+          \ *args], check=True, env=env)\n\n    model_uri = f\"models:/{model_name}@champion\"\
+          \n    run_script(\n        script_name=\"predict_mlflow.py\",\n        args=[\n\
+          \            \"--model\",\n            model_uri,\n            \"--data\"\
+          ,\n            test_path.path,\n            \"--reference-data\",\n    \
+          \        reference_path.path,\n        ],\n    )\n\n    summary = {\n  \
+          \      \"model_uri\": model_uri,\n        \"test_path\": test_path.path,\n\
+          \        \"reference_path\": reference_path.path,\n        \"note\": \"\
+          Detailed metrics are logged in MLflow by predict_mlflow.py\",\n    }\n \
+          \   Path(evaluation_summary_path.path).write_text(\n        json.dumps(summary,\
           \ indent=2, ensure_ascii=False),\n        encoding=\"utf-8\",\n    )\n\n"
         image: python:3.14-slim
     exec-govern-champion:
@@ -188,13 +195,20 @@ deploymentSpec:
           \    min_gain: float,\n    dry_run: str,\n    mlflow_tracking_uri: str,\n\
           \    governance_summary_path: Output[Dataset],\n) -> None:\n    \"\"\"Run\
           \ governance decision and persist a simple decision artifact.\"\"\"\n\n\
-          \    _run_script(\n        source_dir=source_dir,\n        script_name=\"\
+          \    import json\n    import os\n    import subprocess\n    import sys\n\
+          \    from pathlib import Path\n\n    def run_script(script_name: str, args:\
+          \ list[str]) -> None:\n        script_path = Path(source_dir) / script_name\n\
+          \        if not script_path.exists():\n            raise FileNotFoundError(f\"\
+          Script not found: {script_path}\")\n        env = os.environ.copy()\n  \
+          \      if mlflow_tracking_uri:\n            env[\"MLFLOW_TRACKING_URI\"\
+          ] = mlflow_tracking_uri\n        subprocess.run([sys.executable, str(script_path),\
+          \ *args], check=True, env=env)\n\n    run_script(\n        script_name=\"\
           govern.py\",\n        args=[\n            \"--model-name\",\n          \
           \  model_name,\n            \"--min-gain\",\n            str(min_gain),\n\
-          \            \"--dry-run\",\n            dry_run,\n        ],\n        mlflow_tracking_uri=mlflow_tracking_uri,\n\
-          \    )\n\n    summary = {\n        \"model_name\": model_name,\n       \
-          \ \"min_gain\": min_gain,\n        \"dry_run\": dry_run,\n        \"decision\"\
-          : \"logged in MLflow registry tags by govern.py\",\n    }\n    Path(governance_summary_path.path).write_text(\n\
+          \            \"--dry-run\",\n            dry_run,\n        ],\n    )\n\n\
+          \    summary = {\n        \"model_name\": model_name,\n        \"min_gain\"\
+          : min_gain,\n        \"dry_run\": dry_run,\n        \"decision\": \"logged\
+          \ in MLflow registry tags by govern.py\",\n    }\n    Path(governance_summary_path.path).write_text(\n\
           \        json.dumps(summary, indent=2, ensure_ascii=False),\n        encoding=\"\
           utf-8\",\n    )\n\n"
         image: python:3.14-slim
@@ -228,20 +242,27 @@ deploymentSpec:
           \    strategy: str,\n    split_strategy: str,\n    mlflow_tracking_uri:\
           \ str,\n    train_path: Output[Dataset],\n    validation_path: Output[Dataset],\n\
           \    test_path: Output[Dataset],\n) -> None:\n    \"\"\"Run prep.py and\
-          \ expose the split parquet files as KFP artifacts.\"\"\"\n\n    with tempfile.TemporaryDirectory()\
-          \ as temp_dir:\n        _run_script(\n            source_dir=source_dir,\n\
-          \            script_name=\"prep.py\",\n            args=[\n            \
-          \    \"--input\",\n                raw_dataset_path,\n                \"\
-          --output\",\n                temp_dir,\n                \"--strategy\",\n\
-          \                strategy,\n                \"--split-strategy\",\n    \
-          \            split_strategy,\n            ],\n            mlflow_tracking_uri=mlflow_tracking_uri,\n\
-          \        )\n\n        produced = {\n            \"train.parquet\": train_path.path,\n\
-          \            \"validation.parquet\": validation_path.path,\n           \
-          \ \"test.parquet\": test_path.path,\n        }\n        for filename, destination\
-          \ in produced.items():\n            src = Path(temp_dir) / filename\n  \
-          \          if not src.exists():\n                raise FileNotFoundError(f\"\
-          Expected output missing: {src}\")\n            Path(destination).parent.mkdir(parents=True,\
-          \ exist_ok=True)\n            shutil.copyfile(src, destination)\n\n"
+          \ expose the split parquet files as KFP artifacts.\"\"\"\n\n    import os\n\
+          \    import shutil\n    import subprocess\n    import sys\n    import tempfile\n\
+          \    from pathlib import Path\n\n    def run_script(script_name: str, args:\
+          \ list[str]) -> None:\n        script_path = Path(source_dir) / script_name\n\
+          \        if not script_path.exists():\n            raise FileNotFoundError(f\"\
+          Script not found: {script_path}\")\n        env = os.environ.copy()\n  \
+          \      if mlflow_tracking_uri:\n            env[\"MLFLOW_TRACKING_URI\"\
+          ] = mlflow_tracking_uri\n        subprocess.run([sys.executable, str(script_path),\
+          \ *args], check=True, env=env)\n\n    with tempfile.TemporaryDirectory()\
+          \ as temp_dir:\n        run_script(\n            script_name=\"prep.py\"\
+          ,\n            args=[\n                \"--input\",\n                raw_dataset_path,\n\
+          \                \"--output\",\n                temp_dir,\n            \
+          \    \"--strategy\",\n                strategy,\n                \"--split-strategy\"\
+          ,\n                split_strategy,\n            ],\n        )\n\n      \
+          \  produced = {\n            \"train.parquet\": train_path.path,\n     \
+          \       \"validation.parquet\": validation_path.path,\n            \"test.parquet\"\
+          : test_path.path,\n        }\n        for filename, destination in produced.items():\n\
+          \            src = Path(temp_dir) / filename\n            if not src.exists():\n\
+          \                raise FileNotFoundError(f\"Expected output missing: {src}\"\
+          )\n            Path(destination).parent.mkdir(parents=True, exist_ok=True)\n\
+          \            shutil.copyfile(src, destination)\n\n"
         image: python:3.14-slim
     exec-register-candidates:
       container:
@@ -273,17 +294,23 @@ deploymentSpec:
           \    validation_path: Input[Dataset],\n    model_name: str,\n    first_strategy:\
           \ str,\n    second_strategy: str,\n    mlflow_tracking_uri: str,\n    registry_summary_path:\
           \ Output[Dataset],\n) -> None:\n    \"\"\"Register two candidate strategies\
-          \ and write a tiny summary artifact.\"\"\"\n\n    _run_script(\n       \
-          \ source_dir=source_dir,\n        script_name=\"register.py\",\n       \
-          \ args=[\n            \"--train\",\n            train_path.path,\n     \
-          \       \"--validation\",\n            validation_path.path,\n         \
-          \   \"--model-name\",\n            model_name,\n            \"--first-strategy\"\
-          ,\n            first_strategy,\n            \"--second-strategy\",\n   \
-          \         second_strategy,\n        ],\n        mlflow_tracking_uri=mlflow_tracking_uri,\n\
-          \    )\n\n    summary = {\n        \"model_name\": model_name,\n       \
-          \ \"first_strategy\": first_strategy,\n        \"second_strategy\": second_strategy,\n\
-          \        \"train_path\": train_path.path,\n        \"validation_path\":\
-          \ validation_path.path,\n    }\n    Path(registry_summary_path.path).write_text(\n\
+          \ and write a tiny summary artifact.\"\"\"\n\n    import json\n    import\
+          \ os\n    import subprocess\n    import sys\n    from pathlib import Path\n\
+          \n    def run_script(script_name: str, args: list[str]) -> None:\n     \
+          \   script_path = Path(source_dir) / script_name\n        if not script_path.exists():\n\
+          \            raise FileNotFoundError(f\"Script not found: {script_path}\"\
+          )\n        env = os.environ.copy()\n        if mlflow_tracking_uri:\n  \
+          \          env[\"MLFLOW_TRACKING_URI\"] = mlflow_tracking_uri\n        subprocess.run([sys.executable,\
+          \ str(script_path), *args], check=True, env=env)\n\n    run_script(\n  \
+          \      script_name=\"register.py\",\n        args=[\n            \"--train\"\
+          ,\n            train_path.path,\n            \"--validation\",\n       \
+          \     validation_path.path,\n            \"--model-name\",\n           \
+          \ model_name,\n            \"--first-strategy\",\n            first_strategy,\n\
+          \            \"--second-strategy\",\n            second_strategy,\n    \
+          \    ],\n    )\n\n    summary = {\n        \"model_name\": model_name,\n\
+          \        \"first_strategy\": first_strategy,\n        \"second_strategy\"\
+          : second_strategy,\n        \"train_path\": train_path.path,\n        \"\
+          validation_path\": validation_path.path,\n    }\n    Path(registry_summary_path.path).write_text(\n\
           \        json.dumps(summary, indent=2, ensure_ascii=False),\n        encoding=\"\
           utf-8\",\n    )\n\n"
         image: python:3.14-slim
