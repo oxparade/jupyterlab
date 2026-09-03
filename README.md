@@ -1,4 +1,10 @@
 # ElectricityLoadDiagrams20112014 — MLOps Lab
+<img width="1907" height="993" alt="image" src="https://github.com/user-attachments/assets/aee207fc-53cd-4b56-b36a-dd423a4a75e5" />
+<img width="1909" height="995" alt="image" src="https://github.com/user-attachments/assets/a29a5cfe-aec1-43c6-8b6f-c99d3c8e1699" />
+<img width="1911" height="988" alt="image" src="https://github.com/user-attachments/assets/aeb5dcdd-f39d-4527-9673-d7c16348c11d" />
+<img width="1771" height="866" alt="image" src="https://github.com/user-attachments/assets/dac89bb8-b18f-4e53-b6fe-06ad9a268b61" />
+<img width="1898" height="859" alt="image" src="https://github.com/user-attachments/assets/57d2d5c0-ae44-41f1-8216-66728ec45fbf" />
+<img width="1889" height="855" alt="image" src="https://github.com/user-attachments/assets/8d6153bb-3c63-4750-9970-4af62dcfcb49" />
 
 <img width="1686" height="901" alt="image" src="https://github.com/user-attachments/assets/dd993bef-4f82-4d3f-8709-3ee04789358e" />
 <img width="1700" height="740" alt="image" src="https://github.com/user-attachments/assets/0791c56d-8b33-4800-9d12-100ae5cb0a44" />
