@@ -397,11 +397,43 @@ def electricity_forecaster_pipeline(
     )
 
 
+def visualize_pipeline() -> str:
+    """Generate a Mermaid diagram of the pipeline DAG."""
+    diagram = """graph TD
+    A["📥 Import Raw Dataset<br/>(S3)"] --> B["🔧 Prepare Data<br/>(prep.py)"]
+    B --> |train.parquet| C["🤖 Train Model<br/>(train_mlflow.py)"]
+    B --> |validation.parquet| C
+    C --> D["📋 Register Candidates<br/>(register.py)"]
+    B --> |test.parquet| E["🎯 Evaluate Champion<br/>(predict_mlflow.py)"]
+    D --> E
+    E --> F["✅ Governance Decision<br/>(govern.py)"]
+    
+    style A fill:#90EE90
+    style B fill:#87CEEB
+    style C fill:#FFB6C1
+    style D fill:#DDA0DD
+    style E fill:#F0E68C
+    style F fill:#FFA07A
+    
+    A -.MLflow Tracking.-> MLF["🔍 MLflow Server<br/>Train/Register/Log"]
+    B -.logs to.-> MLF
+    C -.logs to.-> MLF
+    D -.logs to.-> MLF
+    E -.logs to.-> MLF
+    F -.logs to.-> MLF
+    
+    style MLF fill:#FFE4B5"""
+    return diagram
+
+
 def compile_pipeline(output_path: Path) -> None:
     compiler.Compiler().compile(
         pipeline_func=electricity_forecaster_pipeline,
         package_path=str(output_path),
     )
+    print(f"\n✅ Pipeline compiled to {output_path}")
+    print("\n📊 DAG Visualization:\n")
+    print(visualize_pipeline())
 
 
 if __name__ == "__main__":
