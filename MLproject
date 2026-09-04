@@ -21,7 +21,10 @@ entry_points:
       run_id: {type: str}
       data: {type: path, default: data/processed/test.parquet}
       reference_data: {type: path, default: data/processed/train.parquet}
-    command: "python3 predict_mlflow.py --model runs:/{run_id}/model --data {data} --reference-data {reference_data}"
+      evidently_api_url: {type: str, default: ""}
+      evidently_project_name: {type: str, default: electricity_forecaster}
+      evidently_secret: {type: str, default: ""}
+    command: "python3 predict_mlflow.py --model runs:/{run_id}/model --data {data} --reference-data {reference_data} --evidently-api-url {evidently_api_url} --evidently-project-name {evidently_project_name} --evidently-secret {evidently_secret}"
 
   register:
     parameters:

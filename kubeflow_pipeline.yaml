@@ -2,6 +2,9 @@
 # Name: electricity-forecaster-kubeflow
 # Description: Kubeflow-native orchestration for the current MLflow/DVC project.
 # Inputs:
+#    evidently_api_url: str [Default: '']
+#    evidently_project_name: str [Default: 'electricity_forecaster']
+#    evidently_secret: str [Default: '']
 #    first_strategy: str [Default: 'short_memory']
 #    governance_dry_run: str [Default: 'false']
 #    min_gain: float [Default: 0.02]
@@ -30,6 +33,12 @@ components:
             schemaTitle: system.Dataset
             schemaVersion: 0.0.1
       parameters:
+        evidently_api_url:
+          parameterType: STRING
+        evidently_project_name:
+          parameterType: STRING
+        evidently_secret:
+          parameterType: STRING
         mlflow_tracking_uri:
           parameterType: STRING
         model_name:
@@ -199,22 +208,30 @@ deploymentSpec:
           \ *\n\ndef evaluate_champion(\n    source_dir: str,\n    model_name: str,\n\
           \    test_path: Input[Dataset],\n    reference_path: Input[Dataset],\n \
           \   registry_summary_path: Input[Dataset],\n    mlflow_tracking_uri: str,\n\
-          \    evaluation_summary_path: Output[Dataset],\n) -> None:\n    \"\"\"Evaluate\
-          \ the promoted champion through predict_mlflow.py.\"\"\"\n\n    import json\n\
-          \    import os\n    import subprocess\n    import sys\n    from pathlib\
-          \ import Path\n\n    def run_script(script_name: str, args: list[str]) ->\
-          \ None:\n        script_path = Path(source_dir) / script_name\n        if\
-          \ not script_path.exists():\n            raise FileNotFoundError(f\"Script\
-          \ not found: {script_path}\")\n        env = os.environ.copy()\n       \
-          \ if mlflow_tracking_uri:\n            env[\"MLFLOW_TRACKING_URI\"] = mlflow_tracking_uri\n\
-          \            if mlflow_tracking_uri.startswith(\"https://\"):\n        \
-          \        env[\"MLFLOW_TRACKING_INSECURE_TLS\"] = \"true\"\n        subprocess.run([sys.executable,\
+          \    evidently_api_url: str,\n    evidently_project_name: str,\n    evidently_secret:\
+          \ str,\n    evaluation_summary_path: Output[Dataset],\n) -> None:\n    \"\
+          \"\"Evaluate the promoted champion through predict_mlflow.py.\"\"\"\n\n\
+          \    import json\n    import os\n    import subprocess\n    import sys\n\
+          \    from pathlib import Path\n\n    def run_script(script_name: str, args:\
+          \ list[str]) -> None:\n        script_path = Path(source_dir) / script_name\n\
+          \        if not script_path.exists():\n            raise FileNotFoundError(f\"\
+          Script not found: {script_path}\")\n        env = os.environ.copy()\n  \
+          \      if mlflow_tracking_uri:\n            env[\"MLFLOW_TRACKING_URI\"\
+          ] = mlflow_tracking_uri\n            if mlflow_tracking_uri.startswith(\"\
+          https://\"):\n                env[\"MLFLOW_TRACKING_INSECURE_TLS\"] = \"\
+          true\"\n        if evidently_api_url:\n            env[\"EVIDENTLY_API_URL\"\
+          ] = evidently_api_url\n        if evidently_project_name:\n            env[\"\
+          EVIDENTLY_PROJECT_NAME\"] = evidently_project_name\n        if evidently_secret:\n\
+          \            env[\"EVIDENTLY_SECRET\"] = evidently_secret\n        subprocess.run([sys.executable,\
           \ str(script_path), *args], check=True, env=env)\n\n    model_uri = f\"\
           models:/{model_name}@champion\"\n    run_script(\n        script_name=\"\
           predict_mlflow.py\",\n        args=[\n            \"--model\",\n       \
           \     model_uri,\n            \"--data\",\n            test_path.path,\n\
           \            \"--reference-data\",\n            reference_path.path,\n \
-          \       ],\n    )\n\n    summary = {\n        \"model_uri\": model_uri,\n\
+          \           \"--evidently-api-url\",\n            evidently_api_url,\n \
+          \           \"--evidently-project-name\",\n            evidently_project_name,\n\
+          \            \"--evidently-secret\",\n            evidently_secret,\n  \
+          \      ],\n    )\n\n    summary = {\n        \"model_uri\": model_uri,\n\
           \        \"test_path\": test_path.path,\n        \"reference_path\": reference_path.path,\n\
           \        \"registry_summary_path\": registry_summary_path.path,\n      \
           \  \"note\": \"Detailed metrics are logged in MLflow by predict_mlflow.py\"\
@@ -462,6 +479,12 @@ root:
                 outputArtifactKey: test_path
                 producerTask: prepare-data
           parameters:
+            evidently_api_url:
+              componentInputParameter: evidently_api_url
+            evidently_project_name:
+              componentInputParameter: evidently_project_name
+            evidently_secret:
+              componentInputParameter: evidently_secret
             mlflow_tracking_uri:
               componentInputParameter: mlflow_tracking_uri
             model_name:
@@ -594,6 +617,18 @@ root:
           name: train-model
   inputDefinitions:
     parameters:
+      evidently_api_url:
+        defaultValue: ''
+        isOptional: true
+        parameterType: STRING
+      evidently_project_name:
+        defaultValue: electricity_forecaster
+        isOptional: true
+        parameterType: STRING
+      evidently_secret:
+        defaultValue: ''
+        isOptional: true
+        parameterType: STRING
       first_strategy:
         defaultValue: short_memory
         isOptional: true

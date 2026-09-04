@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import tempfile
 from pathlib import Path
 
@@ -38,10 +39,76 @@ def _extract_run_id(model_uri: str) -> str | None:
     return parts[1].replace("runs:", "")
 
 
+def _log_report_to_evidently_ui(
+    report,
+    *,
+    project_name: str,
+    api_url: str,
+    secret: str | None = None,
+) -> None:
+    if not api_url:
+        return
+
+    def _publish() -> None:
+        if api_url == "https://app.evidently.cloud":
+            if not secret:
+                raise ValueError("Evidently Cloud requires EVIDENTLY_SECRET")
+            from evidently.ui.workspace import CloudWorkspace
+
+            workspace = CloudWorkspace(token=secret, url=api_url)
+        else:
+            from evidently.ui.workspace import Workspace
+
+            workspace = Workspace.create(api_url)
+
+        report.name = project_name
+        snapshot = report.to_snapshot()
+        project = next((item for item in workspace.list_projects() if item.name == project_name), None)
+        if project is None:
+            project = workspace.create_project(project_name)
+        project.add_snapshot(snapshot)
+        logger.info("logged Evidently snapshot to project=%s", project_name)
+
+    try:
+        _publish()
+    except Exception as first_error:
+        insecure_tls_requested = os.environ.get("EVIDENTLY_INSECURE_TLS", "").strip().lower() in {
+            "1",
+            "true",
+            "yes",
+            "y",
+            "on",
+        }
+        if not (api_url.startswith("https://") or insecure_tls_requested):
+            logger.exception("failed to log snapshot to Evidently UI at %s", api_url)
+            return
+
+        try:
+            import requests
+
+            original_send = requests.Session.send
+
+            def insecure_send(self, request, **kwargs):
+                kwargs.setdefault("verify", False)
+                return original_send(self, request, **kwargs)
+
+            requests.Session.send = insecure_send
+            try:
+                _publish()
+            finally:
+                requests.Session.send = original_send
+        except Exception:
+            logger.exception("failed to log snapshot to Evidently UI at %s", api_url)
+            logger.debug("initial Evidently UI error: %s", first_error)
+
+
 def main(
     model: str,
     data: Path = Path("data/processed/test.parquet"),
     reference_data: Path | None = Path("data/processed/train.parquet"),
+    evidently_api_url: str = os.environ.get("EVIDENTLY_API_URL", ""),
+    evidently_project_name: str = os.environ.get("EVIDENTLY_PROJECT_NAME", "electricity_forecaster"),
+    evidently_secret: str | None = os.environ.get("EVIDENTLY_SECRET"),
 ) -> None:
     """Charge le modèle, score sur test, log les métriques dans le run source."""
     logger.info("loading %s", model)
@@ -86,6 +153,12 @@ def main(
             report.run(
                 reference_data=ref_features[numeric_columns],
                 current_data=cur_features[numeric_columns],
+            )
+            _log_report_to_evidently_ui(
+                report,
+                project_name=evidently_project_name,
+                api_url=evidently_api_url,
+                secret=evidently_secret,
             )
             with tempfile.TemporaryDirectory() as temp_dir:
                 temp_path = Path(temp_dir) / "drift_report.html"
@@ -162,5 +235,27 @@ if __name__ == "__main__":
         default=Path("data/processed/train.parquet"),
         help="Reference dataset for Evidently drift report",
     )
+    parser.add_argument(
+        "--evidently-api-url",
+        default=os.environ.get("EVIDENTLY_API_URL", ""),
+        help="Evidently UI base URL for publishing snapshots",
+    )
+    parser.add_argument(
+        "--evidently-project-name",
+        default=os.environ.get("EVIDENTLY_PROJECT_NAME", "electricity_forecaster"),
+        help="Evidently project name to create or update",
+    )
+    parser.add_argument(
+        "--evidently-secret",
+        default=os.environ.get("EVIDENTLY_SECRET"),
+        help="Secret header/token for Evidently UI writes",
+    )
     args = parser.parse_args()
-    main(model=args.model, data=args.data, reference_data=args.reference_data)
+    main(
+        model=args.model,
+        data=args.data,
+        reference_data=args.reference_data,
+        evidently_api_url=args.evidently_api_url,
+        evidently_project_name=args.evidently_project_name,
+        evidently_secret=args.evidently_secret,
+    )

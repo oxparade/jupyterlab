@@ -44,6 +44,9 @@ def _build_arguments(args: argparse.Namespace) -> dict[str, object]:
         "source_dir": args.source_dir,
         "raw_dataset_uri": args.raw_dataset_uri,
         "mlflow_tracking_uri": args.mlflow_tracking_uri,
+        "evidently_api_url": args.evidently_api_url,
+        "evidently_project_name": args.evidently_project_name,
+        "evidently_secret": args.evidently_secret,
         "model_name": args.model_name,
         "first_strategy": args.first_strategy,
         "second_strategy": second_strategy,
@@ -78,6 +81,12 @@ def main() -> None:
         default=os.environ.get("KUBEFLOW_RAW_DATASET", "s3://models/datasets/LD2011_2014_kwh.parquet"),
     )
     parser.add_argument("--mlflow-tracking-uri", default=os.environ.get("MLFLOW_TRACKING_URI", ""))
+    parser.add_argument("--evidently-api-url", default=os.environ.get("EVIDENTLY_API_URL", ""))
+    parser.add_argument(
+        "--evidently-project-name",
+        default=os.environ.get("EVIDENTLY_PROJECT_NAME", "electricity_forecaster"),
+    )
+    parser.add_argument("--evidently-secret", default=os.environ.get("EVIDENTLY_SECRET", ""))
     parser.add_argument("--model-name", default="electricity_forecaster")
     parser.add_argument("--first-strategy", default="short_memory")
     parser.add_argument(
@@ -103,7 +112,7 @@ def main() -> None:
             f"Pipeline package not found: {pipeline_package}. Compile first with kubeflow_pipeline.py or use --compile-if-missing."
         )
 
-    run_name = args.run_name or f"electricity-forecaster-{dt.datetime.utcnow().strftime('%Y%m%d-%H%M%S')}"
+    run_name = args.run_name or f"electricity-forecaster-{dt.datetime.now(dt.UTC).strftime('%Y%m%d-%H%M%S')}"
 
     client = Client(
         host=host,

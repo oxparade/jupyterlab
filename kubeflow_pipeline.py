@@ -29,25 +29,39 @@ DEFAULT_RAW_DATASET = os.environ.get(
     "KUBEFLOW_RAW_DATASET",
     "s3://models/datasets/LD2011_2014_kwh.parquet",
 )
+DEFAULT_EVIDENTLY_API_URL = os.environ.get("EVIDENTLY_API_URL", "")
+DEFAULT_EVIDENTLY_PROJECT_NAME = os.environ.get("EVIDENTLY_PROJECT_NAME", "electricity_forecaster")
+DEFAULT_EVIDENTLY_SECRET = os.environ.get("EVIDENTLY_SECRET", "")
 
 
-def _build_env(mlflow_tracking_uri: str) -> dict[str, str]:
+def _build_env(mlflow_tracking_uri: str, evidently_api_url: str = "", evidently_secret: str = "") -> dict[str, str]:
     env = os.environ.copy()
     if mlflow_tracking_uri:
         env["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
         if mlflow_tracking_uri.startswith("https://"):
             env["MLFLOW_TRACKING_INSECURE_TLS"] = "true"
+    if evidently_api_url:
+        env["EVIDENTLY_API_URL"] = evidently_api_url
+    if evidently_secret:
+        env["EVIDENTLY_SECRET"] = evidently_secret
     return env
 
 
-def _run_script(source_dir: str, script_name: str, args: list[str], mlflow_tracking_uri: str) -> None:
+def _run_script(
+    source_dir: str,
+    script_name: str,
+    args: list[str],
+    mlflow_tracking_uri: str,
+    evidently_api_url: str = "",
+    evidently_secret: str = "",
+) -> None:
     script_path = Path(source_dir) / script_name
     if not script_path.exists():
         raise FileNotFoundError(f"Script not found: {script_path}")
     subprocess.run(
         [sys.executable, str(script_path), *args],
         check=True,
-        env=_build_env(mlflow_tracking_uri),
+        env=_build_env(mlflow_tracking_uri, evidently_api_url=evidently_api_url, evidently_secret=evidently_secret),
     )
 
 
@@ -283,6 +297,9 @@ def evaluate_champion(
     reference_path: Input[Dataset],
     registry_summary_path: Input[Dataset],
     mlflow_tracking_uri: str,
+    evidently_api_url: str,
+    evidently_project_name: str,
+    evidently_secret: str,
     evaluation_summary_path: Output[Dataset],
 ) -> None:
     """Evaluate the promoted champion through predict_mlflow.py."""
@@ -302,6 +319,12 @@ def evaluate_champion(
             env["MLFLOW_TRACKING_URI"] = mlflow_tracking_uri
             if mlflow_tracking_uri.startswith("https://"):
                 env["MLFLOW_TRACKING_INSECURE_TLS"] = "true"
+        if evidently_api_url:
+            env["EVIDENTLY_API_URL"] = evidently_api_url
+        if evidently_project_name:
+            env["EVIDENTLY_PROJECT_NAME"] = evidently_project_name
+        if evidently_secret:
+            env["EVIDENTLY_SECRET"] = evidently_secret
         subprocess.run([sys.executable, str(script_path), *args], check=True, env=env)
 
     model_uri = f"models:/{model_name}@champion"
@@ -314,6 +337,12 @@ def evaluate_champion(
             test_path.path,
             "--reference-data",
             reference_path.path,
+            "--evidently-api-url",
+            evidently_api_url,
+            "--evidently-project-name",
+            evidently_project_name,
+            "--evidently-secret",
+            evidently_secret,
         ],
     )
 
@@ -335,6 +364,9 @@ def electricity_forecaster_pipeline(
     source_dir: str = DEFAULT_SOURCE_DIR,
     raw_dataset_uri: str = DEFAULT_RAW_DATASET,
     mlflow_tracking_uri: str = "",
+    evidently_api_url: str = DEFAULT_EVIDENTLY_API_URL,
+    evidently_project_name: str = DEFAULT_EVIDENTLY_PROJECT_NAME,
+    evidently_secret: str = DEFAULT_EVIDENTLY_SECRET,
     model_name: str = "electricity_forecaster",
     first_strategy: str = "short_memory",
     second_strategy: str = "mixed",
@@ -385,6 +417,9 @@ def electricity_forecaster_pipeline(
         reference_path=data.outputs["train_path"],
         registry_summary_path=registered.outputs["registry_summary_path"],
         mlflow_tracking_uri=mlflow_tracking_uri,
+        evidently_api_url=evidently_api_url,
+        evidently_project_name=evidently_project_name,
+        evidently_secret=evidently_secret,
     )
 
     govern_champion(
